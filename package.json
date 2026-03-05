@@ -1,9 +1,8 @@
 {
   "name": "meadow-provider-offline",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Offline-capable Meadow provider with browser-side SQLite and IPC routing.",
   "main": "source/Meadow-Provider-Offline.js",
-  "browser": "source/Meadow-Provider-Offline-Browser-Shim.js",
   "scripts": {
     "start": "node source/Meadow-Provider-Offline.js",
     "coverage": "npx quack coverage",
