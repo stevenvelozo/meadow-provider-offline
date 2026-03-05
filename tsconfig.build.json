@@ -1,0 +1,16 @@
+{
+	"include": ["source"],
+	"compilerOptions":
+	{
+		"target": "ES2023",
+		"esModuleInterop": true,
+		"allowJs": true,
+		"checkJs": true,
+		"declaration": true,
+		"emitDeclarationOnly": true,
+		"outDir": "types",
+		"declarationMap": true,
+		"module": "commonjs",
+		"resolveJsonModule": true
+	}
+}

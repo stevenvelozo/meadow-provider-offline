@@ -1,0 +1,18 @@
+{
+  "compilerOptions":
+  {
+    "target": "ES2023",
+    "allowJs": true,
+    "checkJs": true,
+    "esModuleInterop": true,
+    "declaration": true,
+    "outDir": "dist",
+    "declarationMap": true,
+    "module": "nodenext",
+    "resolveJsonModule": true
+  },
+  "include": [
+    "source/**/*.js",
+    "test/**/*.js"
+  ]
+}

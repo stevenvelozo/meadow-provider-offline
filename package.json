@@ -1,0 +1,65 @@
+{
+  "name": "meadow-provider-offline",
+  "version": "0.1.0",
+  "description": "Offline-capable Meadow provider with browser-side SQLite and IPC routing.",
+  "main": "source/Meadow-Provider-Offline.js",
+  "browser": "source/Meadow-Provider-Offline-Browser-Shim.js",
+  "scripts": {
+    "start": "node source/Meadow-Provider-Offline.js",
+    "coverage": "npx quack coverage",
+    "test": "npx quack test",
+    "tests": "npx quack test -g",
+    "build": "npx quack build",
+    "check": "tsc -p . --noEmit",
+    "types": "tsc -p tsconfig.build.json"
+  },
+  "types": "types/Meadow-Provider-Offline.d.ts",
+  "mocha": {
+    "diff": true,
+    "extension": [
+      "js"
+    ],
+    "package": "./package.json",
+    "reporter": "spec",
+    "slow": "75",
+    "ui": "tdd",
+    "watch-files": [
+      "source/**/*.js",
+      "test/**/*.js"
+    ],
+    "watch-ignore": [
+      "lib/vendor"
+    ]
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/stevenvelozo/meadow-provider-offline.git"
+  },
+  "keywords": [
+    "meadow",
+    "offline",
+    "sqlite",
+    "browser",
+    "ipc"
+  ],
+  "author": "Steven Velozo <steven@velozo.com> (http://velozo.com/)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/stevenvelozo/meadow-provider-offline/issues"
+  },
+  "homepage": "https://github.com/stevenvelozo/meadow-provider-offline",
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "quackage": "^1.0.63",
+    "sql.js": "^1.14.1",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "fable": "^3.1.63",
+    "fable-serviceproviderbase": "^3.0.19",
+    "meadow": "^2.0.28",
+    "meadow-connection-sqlite-browser": "^1.0.1",
+    "meadow-endpoints": "^4.0.13",
+    "orator": "^6.0.4"
+  }
+}
