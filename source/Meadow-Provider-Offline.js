@@ -44,6 +44,7 @@ const libDataCacheManager = require('./Data-Cache-Manager.js');
 const libIPCOratorManager = require('./IPC-Orator-Manager.js');
 const libRestClientInterceptor = require('./RestClient-Interceptor.js');
 const libDirtyRecordTracker = require('./Dirty-Record-Tracker.js');
+const libBlobStoreManager = require('./Blob-Store-Manager.js');
 
 /**
  * @class MeadowProviderOffline
@@ -85,6 +86,12 @@ class MeadowProviderOffline extends libFableServiceBase
 		 * @type {import('./Dirty-Record-Tracker.js')|null}
 		 */
 		this._DirtyRecordTracker = null;
+
+		/**
+		 * The Blob Store Manager (IndexedDB binary storage).
+		 * @type {import('./Blob-Store-Manager.js')|null}
+		 */
+		this._BlobStoreManager = null;
 
 		/**
 		 * Registered entities.
@@ -150,6 +157,16 @@ class MeadowProviderOffline extends libFableServiceBase
 	}
 
 	/**
+	 * Get the Blob Store Manager.
+	 *
+	 * @returns {import('./Blob-Store-Manager.js')|null}
+	 */
+	get blobStore()
+	{
+		return this._BlobStoreManager;
+	}
+
+	/**
 	 * Get the registered entity names.
 	 *
 	 * @returns {string[]}
@@ -210,6 +227,9 @@ class MeadowProviderOffline extends libFableServiceBase
 		this.fable.serviceManager.addServiceType('DirtyRecordTracker', libDirtyRecordTracker);
 		this._DirtyRecordTracker = this.fable.serviceManager.instantiateServiceProvider('DirtyRecordTracker', {}, `${this.Hash}-DirtyTracker`);
 
+		this.fable.serviceManager.addServiceType('BlobStoreManager', libBlobStoreManager);
+		this._BlobStoreManager = this.fable.serviceManager.instantiateServiceProvider('BlobStoreManager', {}, `${this.Hash}-BlobStore`);
+
 		// Apply session configuration for browser-side meadow-endpoints
 		this._applySessionConfig();
 
@@ -233,9 +253,20 @@ class MeadowProviderOffline extends libFableServiceBase
 							return fCallback(pOratorError);
 						}
 
-						tmpSelf.initialized = true;
-						tmpSelf.log.info('MeadowProviderOffline: Initialized successfully.');
-						return fCallback();
+						// Initialize BlobStore Manager (IndexedDB)
+						tmpSelf._BlobStoreManager.initializeAsync(
+							(pBlobStoreError) =>
+							{
+								if (pBlobStoreError)
+								{
+									tmpSelf.log.error('MeadowProviderOffline: Failed to initialize BlobStoreManager', { Error: pBlobStoreError });
+									return fCallback(pBlobStoreError);
+								}
+
+								tmpSelf.initialized = true;
+								tmpSelf.log.info('MeadowProviderOffline: Initialized successfully.');
+								return fCallback();
+							});
 					});
 			});
 	}
@@ -450,10 +481,15 @@ class MeadowProviderOffline extends libFableServiceBase
 	 * After this call, requests matching registered entity URL patterns
 	 * will be routed through IPC → SQLite instead of HTTP.
 	 *
+	 * Optionally connects binary interception on HeadlightRestClient,
+	 * routing postBinary/getBinaryBlob calls to the BlobStore.
+	 *
 	 * @param {object} [pRestClient] - A Fable RestClient instance. If not provided,
 	 *                                  attempts to use fable.RestClient.
+	 * @param {object} [pHeadlightRestClient] - Optional HeadlightRestClient instance
+	 *                                           for binary method interception.
 	 */
-	connect(pRestClient)
+	connect(pRestClient, pHeadlightRestClient)
 	{
 		if (!this.initialized)
 		{
@@ -476,6 +512,26 @@ class MeadowProviderOffline extends libFableServiceBase
 		}
 
 		this._RestClientInterceptor.connect(tmpRestClient, this._IPCOratorManager);
+
+		// Also intercept the HeadlightRestClient's internal RestClient if it's
+		// a different instance. HeadlightRestClient maintains its own RestClient
+		// that all provider JSON methods (getJSON, putJSON, postJSON) route through.
+		// Without this, those calls bypass the IPC interception entirely.
+		if (pHeadlightRestClient && pHeadlightRestClient.restClient
+			&& pHeadlightRestClient.restClient !== tmpRestClient)
+		{
+			this._RestClientInterceptor.connectAdditionalRestClient(pHeadlightRestClient.restClient);
+		}
+
+		// Binary interception (optional — only if HeadlightRestClient provided with binary methods)
+		if (pHeadlightRestClient && typeof pHeadlightRestClient.postBinary === 'function')
+		{
+			this._RestClientInterceptor.connectBinary(
+				pHeadlightRestClient,
+				this._BlobStoreManager,
+				this._DirtyRecordTracker
+			);
+		}
 	}
 
 	/**

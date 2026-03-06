@@ -31,6 +31,11 @@ declare class MeadowProviderOffline extends libFableServiceBase {
      */
     _DirtyRecordTracker: import("./Dirty-Record-Tracker.js") | null;
     /**
+     * The Blob Store Manager (IndexedDB binary storage).
+     * @type {import('./Blob-Store-Manager.js')|null}
+     */
+    _BlobStoreManager: import("./Blob-Store-Manager.js") | null;
+    /**
      * Registered entities.
      * @type {Record<string, { dal: object, endpoints: object, schema: object }>}
      */
@@ -73,6 +78,12 @@ declare class MeadowProviderOffline extends libFableServiceBase {
      * @returns {import('./RestClient-Interceptor.js')|null}
      */
     get restClientInterceptor(): import("./RestClient-Interceptor.js") | null;
+    /**
+     * Get the Blob Store Manager.
+     *
+     * @returns {import('./Blob-Store-Manager.js')|null}
+     */
+    get blobStore(): import("./Blob-Store-Manager.js") | null;
     /**
      * Get the registered entity names.
      *
@@ -160,10 +171,15 @@ declare class MeadowProviderOffline extends libFableServiceBase {
      * After this call, requests matching registered entity URL patterns
      * will be routed through IPC → SQLite instead of HTTP.
      *
+     * Optionally connects binary interception on HeadlightRestClient,
+     * routing postBinary/getBinaryBlob calls to the BlobStore.
+     *
      * @param {object} [pRestClient] - A Fable RestClient instance. If not provided,
      *                                  attempts to use fable.RestClient.
+     * @param {object} [pHeadlightRestClient] - Optional HeadlightRestClient instance
+     *                                           for binary method interception.
      */
-    connect(pRestClient?: object): void;
+    connect(pRestClient?: object, pHeadlightRestClient?: object): void;
     /**
      * Disconnect the interceptor from the RestClient.
      *

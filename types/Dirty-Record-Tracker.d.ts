@@ -8,6 +8,14 @@ export = DirtyRecordTracker;
  * @property {number} timestamp - When the mutation occurred
  */
 /**
+ * @typedef {object} BinaryMutation
+ * @property {string} entity - The entity name (e.g., "Artifact")
+ * @property {number|string} id - The record ID
+ * @property {string} blobKey - The BlobStore key (e.g., "Artifact:3:v1")
+ * @property {string} mimeType - MIME type of the binary data
+ * @property {number} timestamp - When the mutation occurred
+ */
+/**
  * @class DirtyRecordTracker
  * @extends libFableServiceBase
  */
@@ -22,6 +30,10 @@ declare class DirtyRecordTracker extends libFableServiceBase {
     _mutations: DirtyMutation[];
     /** @type {Record<string, number>} Maps "Entity:ID" to mutation index */
     _dirtyMap: Record<string, number>;
+    /** @type {BinaryMutation[]} */
+    _binaryMutations: BinaryMutation[];
+    /** @type {Record<string, number>} Maps "Entity:ID" to binary mutation index */
+    _binaryDirtyMap: Record<string, number>;
     /**
      * Track a local mutation.
      *
@@ -64,7 +76,7 @@ declare class DirtyRecordTracker extends libFableServiceBase {
      */
     clearEntity(pEntity: string): void;
     /**
-     * Clear all mutations.
+     * Clear all mutations (entity and binary).
      */
     clearAll(): void;
     /**
@@ -81,13 +93,63 @@ declare class DirtyRecordTracker extends libFableServiceBase {
      */
     hasEntityDirtyRecords(pEntity: string): boolean;
     /**
+     * Track a binary mutation (media upload that needs syncing).
+     *
+     * Binary mutations are tracked separately from entity mutations
+     * because binary uploads must happen AFTER entity records are
+     * synced to the server (to get server-assigned IDs).
+     *
+     * @param {string} pEntity - Entity name (e.g., "Artifact")
+     * @param {number|string} pIDRecord - Record ID
+     * @param {string} pBlobKey - BlobStore key (e.g., "Artifact:3:v1")
+     * @param {string} pMimeType - MIME type of the binary data
+     */
+    trackBinaryMutation(pEntity: string, pIDRecord: number | string, pBlobKey: string, pMimeType: string): void;
+    /**
+     * Get all pending binary mutations.
+     *
+     * @returns {BinaryMutation[]}
+     */
+    getBinaryMutations(): BinaryMutation[];
+    /**
+     * Get binary mutations for a specific entity.
+     *
+     * @param {string} pEntity - Entity name
+     * @returns {BinaryMutation[]}
+     */
+    getBinaryMutationsForEntity(pEntity: string): BinaryMutation[];
+    /**
+     * Clear a specific binary mutation after successful sync.
+     *
+     * @param {string} pEntity - Entity name
+     * @param {number|string} pIDRecord - Record ID
+     */
+    clearBinaryMutation(pEntity: string, pIDRecord: number | string): void;
+    /**
+     * Check if there are any pending binary mutations.
+     *
+     * @returns {boolean}
+     */
+    hasBinaryMutations(): boolean;
+    /**
+     * Get the count of pending binary mutations.
+     *
+     * @returns {number}
+     */
+    getBinaryDirtyCount(): number;
+    /**
+     * Rebuild the binary dirty map index after array modifications.
+     * @private
+     */
+    private _rebuildBinaryDirtyMap;
+    /**
      * Rebuild the dirty map index after array modifications.
      * @private
      */
     private _rebuildDirtyMap;
 }
 declare namespace DirtyRecordTracker {
-    export { isFableService, serviceType, DirtyMutation };
+    export { isFableService, serviceType, DirtyMutation, BinaryMutation };
 }
 import libFableServiceBase = require("fable-serviceproviderbase");
 declare var isFableService: boolean;
@@ -109,6 +171,28 @@ type DirtyMutation = {
      * - The full record data at time of mutation
      */
     record: object;
+    /**
+     * - When the mutation occurred
+     */
+    timestamp: number;
+};
+type BinaryMutation = {
+    /**
+     * - The entity name (e.g., "Artifact")
+     */
+    entity: string;
+    /**
+     * - The record ID
+     */
+    id: number | string;
+    /**
+     * - The BlobStore key (e.g., "Artifact:3:v1")
+     */
+    blobKey: string;
+    /**
+     * - MIME type of the binary data
+     */
+    mimeType: string;
     /**
      * - When the mutation occurred
      */

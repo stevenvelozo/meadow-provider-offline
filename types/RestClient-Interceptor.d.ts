@@ -37,6 +37,41 @@ declare class RestClientInterceptor extends libFableServiceBase {
      */
     _registeredPrefixes: Record<string, boolean>;
     /**
+     * The HeadlightRestClient instance we are binary-connected to.
+     * @type {object|null}
+     */
+    _connectedHeadlightRestClient: object | null;
+    /**
+     * The original postBinary function, stashed for restore.
+     * @type {function|null}
+     */
+    _originalPostBinary: Function | null;
+    /**
+     * The original getBinaryBlob function, stashed for restore.
+     * @type {function|null}
+     */
+    _originalGetBinaryBlob: Function | null;
+    /**
+     * The BlobStoreManager for binary storage.
+     * @type {object|null}
+     */
+    _BlobStore: object | null;
+    /**
+     * The DirtyRecordTracker for binary mutation tracking.
+     * @type {object|null}
+     */
+    _DirtyTracker: object | null;
+    /**
+     * Additional RestClient instances that have been wrapped.
+     * Each entry stores { restClient, originalExecuteJSONRequest, originalExecuteChunkedRequest }.
+     * @type {Array<{ restClient: object, originalExecuteJSONRequest: function, originalExecuteChunkedRequest: function }>}
+     */
+    _additionalRestClients: Array<{
+        restClient: object;
+        originalExecuteJSONRequest: Function;
+        originalExecuteChunkedRequest: Function;
+    }>;
+    /**
      * Register a URL prefix for interception.
      *
      * When a request URL path starts with this prefix, it will be
@@ -72,6 +107,19 @@ declare class RestClientInterceptor extends libFableServiceBase {
      */
     private _resolveURL;
     /**
+     * Normalize a URL for IPC route matching.
+     *
+     * Resolves the URL to a pathname and strips any trailing slash.
+     * Meadow-endpoints registers routes without trailing slashes
+     * (e.g., PUT /1.0/Document) but some clients send URLs with
+     * trailing slashes (e.g., PUT /1.0/Document/).
+     *
+     * @param {string} pURL - The URL to normalize
+     * @returns {string} Normalized pathname suitable for IPC invoke
+     * @private
+     */
+    private _normalizeRouteURL;
+    /**
      * Parse the IPC response into the format expected by RestClient consumers.
      *
      * Converts the IPC synthesized response into a { statusCode, body } format
@@ -95,15 +143,65 @@ declare class RestClientInterceptor extends libFableServiceBase {
      */
     connect(pRestClient: object, pIPCOratorManager: object): void;
     /**
+     * Connect an additional RestClient for interception.
+     *
+     * Some services (e.g., HeadlightRestClient) maintain their own
+     * internal RestClient instance separate from fable.RestClient.
+     * This method wraps that additional RestClient with the same
+     * interception logic so all HTTP calls through it are also routed
+     * through IPC when matching registered prefixes.
+     *
+     * Must be called after connect() — requires _IPCOratorManager to be set.
+     *
+     * @param {object} pRestClient - An additional Fable RestClient service instance
+     */
+    connectAdditionalRestClient(pRestClient: object): void;
+    /**
      * Disconnect from the previously connected RestClient.
      *
      * Restores the original executeJSONRequest and executeChunkedRequest
-     * functions.
+     * functions. Also disconnects binary interception and additional
+     * RestClients if connected.
      *
      * @param {object} [pRestClient] - Optional; if not provided, disconnects the previously connected RestClient
      * @returns {boolean} True if successfully disconnected
      */
     disconnect(pRestClient?: object): boolean;
+    /**
+     * Connect binary interception to a HeadlightRestClient.
+     *
+     * Wraps postBinary() and getBinaryBlob() on the HeadlightRestClient
+     * to intercept matching URLs and route them to the BlobStore instead
+     * of making network requests.
+     *
+     * This is separate from connect() to keep the existing JSON interception
+     * on the Fable RestClient unchanged.
+     *
+     * @param {object} pHeadlightRestClient - HeadlightRestClient with postBinary/getBinaryBlob methods
+     * @param {object} pBlobStoreManager - BlobStoreManager instance for IndexedDB storage
+     * @param {object} pDirtyRecordTracker - DirtyRecordTracker instance for mutation tracking
+     */
+    connectBinary(pHeadlightRestClient: object, pBlobStoreManager: object, pDirtyRecordTracker: object): void;
+    /**
+     * Disconnect binary interception from HeadlightRestClient.
+     *
+     * Restores the original postBinary and getBinaryBlob functions.
+     *
+     * @returns {boolean} True if successfully disconnected
+     */
+    disconnectBinary(): boolean;
+    /**
+     * Parse a binary media URL to extract entity type, ID, and version.
+     *
+     * Handles URLs like:
+     *   /1.0/Artifact/Media/{IDArtifact}/{Version}
+     *   http://server/1.0/Artifact/Media/123/1
+     *
+     * @param {string} pURL - The full or relative URL
+     * @returns {{ entity: string, id: string|number, version: string|number }|null}
+     * @private
+     */
+    private _parseBinaryURL;
 }
 declare namespace RestClientInterceptor {
     export { isFableService, serviceType };

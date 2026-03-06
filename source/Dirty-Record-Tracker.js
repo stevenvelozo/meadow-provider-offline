@@ -20,6 +20,15 @@ const libFableServiceBase = require('fable-serviceproviderbase');
  */
 
 /**
+ * @typedef {object} BinaryMutation
+ * @property {string} entity - The entity name (e.g., "Artifact")
+ * @property {number|string} id - The record ID
+ * @property {string} blobKey - The BlobStore key (e.g., "Artifact:3:v1")
+ * @property {string} mimeType - MIME type of the binary data
+ * @property {number} timestamp - When the mutation occurred
+ */
+
+/**
  * @class DirtyRecordTracker
  * @extends libFableServiceBase
  */
@@ -41,6 +50,12 @@ class DirtyRecordTracker extends libFableServiceBase
 
 		/** @type {Record<string, number>} Maps "Entity:ID" to mutation index */
 		this._dirtyMap = {};
+
+		/** @type {BinaryMutation[]} */
+		this._binaryMutations = [];
+
+		/** @type {Record<string, number>} Maps "Entity:ID" to binary mutation index */
+		this._binaryDirtyMap = {};
 	}
 
 	/**
@@ -151,12 +166,14 @@ class DirtyRecordTracker extends libFableServiceBase
 	}
 
 	/**
-	 * Clear all mutations.
+	 * Clear all mutations (entity and binary).
 	 */
 	clearAll()
 	{
 		this._mutations = [];
 		this._dirtyMap = {};
+		this._binaryMutations = [];
+		this._binaryDirtyMap = {};
 	}
 
 	/**
@@ -178,6 +195,117 @@ class DirtyRecordTracker extends libFableServiceBase
 	hasEntityDirtyRecords(pEntity)
 	{
 		return this._mutations.some((pMutation) => pMutation.entity === pEntity);
+	}
+
+	// ========================================================================
+	// Binary Mutation Tracking
+	// ========================================================================
+
+	/**
+	 * Track a binary mutation (media upload that needs syncing).
+	 *
+	 * Binary mutations are tracked separately from entity mutations
+	 * because binary uploads must happen AFTER entity records are
+	 * synced to the server (to get server-assigned IDs).
+	 *
+	 * @param {string} pEntity - Entity name (e.g., "Artifact")
+	 * @param {number|string} pIDRecord - Record ID
+	 * @param {string} pBlobKey - BlobStore key (e.g., "Artifact:3:v1")
+	 * @param {string} pMimeType - MIME type of the binary data
+	 */
+	trackBinaryMutation(pEntity, pIDRecord, pBlobKey, pMimeType)
+	{
+		let tmpKey = `${pEntity}:${pIDRecord}`;
+		let tmpMutation = {
+			entity: pEntity,
+			id: pIDRecord,
+			blobKey: pBlobKey,
+			mimeType: pMimeType,
+			timestamp: Date.now()
+		};
+
+		if (this._binaryDirtyMap.hasOwnProperty(tmpKey))
+		{
+			// Replace existing binary mutation (latest upload wins)
+			this._binaryMutations[this._binaryDirtyMap[tmpKey]] = tmpMutation;
+		}
+		else
+		{
+			this._binaryDirtyMap[tmpKey] = this._binaryMutations.length;
+			this._binaryMutations.push(tmpMutation);
+		}
+	}
+
+	/**
+	 * Get all pending binary mutations.
+	 *
+	 * @returns {BinaryMutation[]}
+	 */
+	getBinaryMutations()
+	{
+		return this._binaryMutations.slice();
+	}
+
+	/**
+	 * Get binary mutations for a specific entity.
+	 *
+	 * @param {string} pEntity - Entity name
+	 * @returns {BinaryMutation[]}
+	 */
+	getBinaryMutationsForEntity(pEntity)
+	{
+		return this._binaryMutations.filter((pMutation) => pMutation.entity === pEntity);
+	}
+
+	/**
+	 * Clear a specific binary mutation after successful sync.
+	 *
+	 * @param {string} pEntity - Entity name
+	 * @param {number|string} pIDRecord - Record ID
+	 */
+	clearBinaryMutation(pEntity, pIDRecord)
+	{
+		let tmpKey = `${pEntity}:${pIDRecord}`;
+		if (this._binaryDirtyMap.hasOwnProperty(tmpKey))
+		{
+			this._binaryMutations.splice(this._binaryDirtyMap[tmpKey], 1);
+			delete this._binaryDirtyMap[tmpKey];
+			this._rebuildBinaryDirtyMap();
+		}
+	}
+
+	/**
+	 * Check if there are any pending binary mutations.
+	 *
+	 * @returns {boolean}
+	 */
+	hasBinaryMutations()
+	{
+		return this._binaryMutations.length > 0;
+	}
+
+	/**
+	 * Get the count of pending binary mutations.
+	 *
+	 * @returns {number}
+	 */
+	getBinaryDirtyCount()
+	{
+		return this._binaryMutations.length;
+	}
+
+	/**
+	 * Rebuild the binary dirty map index after array modifications.
+	 * @private
+	 */
+	_rebuildBinaryDirtyMap()
+	{
+		this._binaryDirtyMap = {};
+		for (let i = 0; i < this._binaryMutations.length; i++)
+		{
+			let tmpMutation = this._binaryMutations[i];
+			this._binaryDirtyMap[`${tmpMutation.entity}:${tmpMutation.id}`] = i;
+		}
 	}
 
 	/**
