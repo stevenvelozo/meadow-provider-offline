@@ -122,14 +122,16 @@ class BlobStoreManager extends libFableServiceBase
 
 			tmpRequest.onerror = (pEvent) =>
 			{
-				let tmpError = new Error(`BlobStoreManager: Failed to open IndexedDB — ${pEvent.target.error}`);
+				let tmpTarget = /** @type {IDBOpenDBRequest} */ (pEvent.target);
+				let tmpError = new Error(`BlobStoreManager: Failed to open IndexedDB — ${tmpTarget.error}`);
 				tmpSelf.log.error(tmpError.message);
 				return fCallback(tmpError);
 			};
 
 			tmpRequest.onupgradeneeded = (pEvent) =>
 			{
-				let tmpDB = pEvent.target.result;
+				let tmpTarget = /** @type {IDBOpenDBRequest} */ (pEvent.target);
+				let tmpDB = tmpTarget.result;
 
 				if (!tmpDB.objectStoreNames.contains(STORE_NAME))
 				{
@@ -140,7 +142,8 @@ class BlobStoreManager extends libFableServiceBase
 
 			tmpRequest.onsuccess = (pEvent) =>
 			{
-				tmpSelf._db = pEvent.target.result;
+				let tmpTarget = /** @type {IDBOpenDBRequest} */ (pEvent.target);
+				tmpSelf._db = tmpTarget.result;
 				tmpSelf.initialized = true;
 				tmpSelf.log.info('BlobStoreManager: Initialized successfully.');
 				return fCallback();
@@ -203,14 +206,16 @@ class BlobStoreManager extends libFableServiceBase
 
 			tmpRequest.onerror = (pEvent) =>
 			{
-				let tmpError = new Error(`BlobStoreManager: Failed to store blob [${pKey}] — ${pEvent.target.error}`);
+				let tmpTarget = /** @type {IDBRequest} */ (pEvent.target);
+				let tmpError = new Error(`BlobStoreManager: Failed to store blob [${pKey}] — ${tmpTarget.error}`);
 				this.log.error(tmpError.message);
 				return fCallback(tmpError);
 			};
 
 			tmpRequest.onsuccess = () =>
 			{
-				this.log.info(`BlobStoreManager: Stored blob [${pKey}] (${tmpBlob.size} bytes)`);
+				let tmpSize = (tmpBlob instanceof Blob) ? tmpBlob.size : (/** @type {ArrayBuffer} */ (tmpBlob)).byteLength;
+				this.log.info(`BlobStoreManager: Stored blob [${pKey}] (${tmpSize} bytes)`);
 				return fCallback(null);
 			};
 		}
@@ -246,14 +251,16 @@ class BlobStoreManager extends libFableServiceBase
 
 			tmpRequest.onerror = (pEvent) =>
 			{
-				let tmpError = new Error(`BlobStoreManager: Failed to retrieve blob [${pKey}] — ${pEvent.target.error}`);
+				let tmpTarget = /** @type {IDBRequest} */ (pEvent.target);
+				let tmpError = new Error(`BlobStoreManager: Failed to retrieve blob [${pKey}] — ${tmpTarget.error}`);
 				this.log.error(tmpError.message);
 				return fCallback(tmpError);
 			};
 
 			tmpRequest.onsuccess = (pEvent) =>
 			{
-				let tmpResult = pEvent.target.result;
+				let tmpTarget = /** @type {IDBRequest} */ (pEvent.target);
+				let tmpResult = tmpTarget.result;
 				if (!tmpResult)
 				{
 					return fCallback(null, null);
@@ -345,7 +352,8 @@ class BlobStoreManager extends libFableServiceBase
 
 			tmpRequest.onerror = (pEvent) =>
 			{
-				let tmpError = new Error(`BlobStoreManager: Failed to delete blob [${pKey}] — ${pEvent.target.error}`);
+				let tmpTarget = /** @type {IDBRequest} */ (pEvent.target);
+				let tmpError = new Error(`BlobStoreManager: Failed to delete blob [${pKey}] — ${tmpTarget.error}`);
 				this.log.error(tmpError.message);
 				return fCallback(tmpError);
 			};
@@ -394,14 +402,16 @@ class BlobStoreManager extends libFableServiceBase
 
 			tmpRequest.onerror = (pEvent) =>
 			{
-				let tmpError = new Error(`BlobStoreManager: Failed to list blobs — ${pEvent.target.error}`);
+				let tmpTarget = /** @type {IDBRequest} */ (pEvent.target);
+				let tmpError = new Error(`BlobStoreManager: Failed to list blobs — ${tmpTarget.error}`);
 				this.log.error(tmpError.message);
 				return fCallback(tmpError);
 			};
 
 			tmpRequest.onsuccess = (pEvent) =>
 			{
-				let tmpCursor = pEvent.target.result;
+				let tmpTarget = /** @type {IDBRequest} */ (pEvent.target);
+				let tmpCursor = tmpTarget.result;
 				if (tmpCursor)
 				{
 					if (!pPrefix || tmpCursor.value.key.startsWith(pPrefix))
@@ -459,7 +469,8 @@ class BlobStoreManager extends libFableServiceBase
 
 			tmpRequest.onerror = (pEvent) =>
 			{
-				let tmpError = new Error(`BlobStoreManager: Failed to clear store — ${pEvent.target.error}`);
+				let tmpTarget = /** @type {IDBRequest} */ (pEvent.target);
+				let tmpError = new Error(`BlobStoreManager: Failed to clear store — ${tmpTarget.error}`);
 				this.log.error(tmpError.message);
 				return fCallback(tmpError);
 			};

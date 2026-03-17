@@ -1,6 +1,6 @@
 {
   "name": "meadow-provider-offline",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Offline-capable Meadow provider with browser-side SQLite and IPC routing.",
   "main": "source/Meadow-Provider-Offline.js",
   "scripts": {
@@ -49,16 +49,16 @@
   "homepage": "https://github.com/stevenvelozo/meadow-provider-offline",
   "devDependencies": {
     "@types/mocha": "^10.0.10",
-    "quackage": "^1.0.63",
+    "quackage": "^1.0.65",
     "sql.js": "^1.14.1",
     "typescript": "^5.9.3"
   },
   "dependencies": {
-    "fable": "^3.1.63",
+    "fable": "^3.1.66",
     "fable-serviceproviderbase": "^3.0.19",
-    "meadow": "^2.0.28",
+    "meadow": "^2.0.33",
     "meadow-connection-sqlite-browser": "^1.0.1",
-    "meadow-endpoints": "^4.0.13",
+    "meadow-endpoints": "^4.0.14",
     "orator": "^6.0.4"
   }
 }

@@ -523,11 +523,12 @@ class MeadowProviderOffline extends libFableServiceBase
 			this._RestClientInterceptor.connectAdditionalRestClient(pHeadlightRestClient.restClient);
 		}
 
-		// Binary interception (optional — only if HeadlightRestClient provided with binary methods)
-		if (pHeadlightRestClient && typeof pHeadlightRestClient.postBinary === 'function')
+		// Enable binary interception (BlobStore routing) if BlobStoreManager is available.
+		// Binary upload/download interception happens at the RestClient level via the
+		// executeBinaryUpload and executeChunkedRequest wrappers set up by connect().
+		if (this._BlobStoreManager)
 		{
 			this._RestClientInterceptor.connectBinary(
-				pHeadlightRestClient,
 				this._BlobStoreManager,
 				this._DirtyRecordTracker
 			);

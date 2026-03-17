@@ -21,6 +21,11 @@ declare class RestClientInterceptor extends libFableServiceBase {
      */
     _originalExecuteChunkedRequest: Function | null;
     /**
+     * The original executeBinaryUpload function, stashed for restore.
+     * @type {function|null}
+     */
+    _originalExecuteBinaryUpload: Function | null;
+    /**
      * The RestClient instance we are connected to.
      * @type {object|null}
      */
@@ -37,21 +42,6 @@ declare class RestClientInterceptor extends libFableServiceBase {
      */
     _registeredPrefixes: Record<string, boolean>;
     /**
-     * The HeadlightRestClient instance we are binary-connected to.
-     * @type {object|null}
-     */
-    _connectedHeadlightRestClient: object | null;
-    /**
-     * The original postBinary function, stashed for restore.
-     * @type {function|null}
-     */
-    _originalPostBinary: Function | null;
-    /**
-     * The original getBinaryBlob function, stashed for restore.
-     * @type {function|null}
-     */
-    _originalGetBinaryBlob: Function | null;
-    /**
      * The BlobStoreManager for binary storage.
      * @type {object|null}
      */
@@ -63,14 +53,10 @@ declare class RestClientInterceptor extends libFableServiceBase {
     _DirtyTracker: object | null;
     /**
      * Additional RestClient instances that have been wrapped.
-     * Each entry stores { restClient, originalExecuteJSONRequest, originalExecuteChunkedRequest }.
-     * @type {Array<{ restClient: object, originalExecuteJSONRequest: function, originalExecuteChunkedRequest: function }>}
+     * Each entry stores { restClient, originalExecuteJSONRequest, originalExecuteChunkedRequest, originalExecuteBinaryUpload }.
+     * @type {Array<object>}
      */
-    _additionalRestClients: Array<{
-        restClient: object;
-        originalExecuteJSONRequest: Function;
-        originalExecuteChunkedRequest: Function;
-    }>;
+    _additionalRestClients: Array<object>;
     /**
      * Register a URL prefix for interception.
      *
@@ -135,8 +121,41 @@ declare class RestClientInterceptor extends libFableServiceBase {
      */
     private _handleIPCResponse;
     /**
-     * Connect to a RestClient, wrapping executeJSONRequest and
-     * executeChunkedRequest with interception logic.
+     * Check if a resolved URL path is a binary media URL (Artifact/Media).
+     *
+     * Used to distinguish binary URLs (routed to BlobStore) from entity
+     * URLs (routed to IPC) when both match registered prefixes.
+     *
+     * @param {string} pURL - The URL to check (full or resolved pathname)
+     * @returns {boolean} True if the URL matches a binary media pattern
+     * @private
+     */
+    private _isBinaryURL;
+    /**
+     * Handle an intercepted binary upload by routing to BlobStore.
+     *
+     * Parses the URL, stores the binary body in BlobStore, tracks the
+     * mutation in DirtyRecordTracker, and returns a success response.
+     *
+     * @param {string} pURL - The request URL
+     * @param {Buffer|Blob|File} pBody - The binary body
+     * @param {string} pContentType - MIME type from Content-Type header
+     * @param {function} fCallback - Callback (pError, pResponse, pBody)
+     * @param {function} [fOnProgress] - Optional progress callback
+     * @private
+     */
+    private _handleBinaryUpload;
+    /**
+     * Handle an intercepted binary download by fetching from BlobStore.
+     *
+     * @param {string} pURL - The request URL
+     * @param {function} fCallback - Callback (pError, pResponse, pBody)
+     * @private
+     */
+    private _handleBinaryDownload;
+    /**
+     * Connect to a RestClient, wrapping executeJSONRequest,
+     * executeChunkedRequest, and executeBinaryUpload with interception logic.
      *
      * @param {object} pRestClient - A Fable RestClient service instance
      * @param {object} pIPCOratorManager - The IPC Orator Manager instance
@@ -168,26 +187,29 @@ declare class RestClientInterceptor extends libFableServiceBase {
      */
     disconnect(pRestClient?: object): boolean;
     /**
-     * Connect binary interception to a HeadlightRestClient.
+     * Enable binary interception (BlobStore routing) on already-connected
+     * RestClients.
      *
-     * Wraps postBinary() and getBinaryBlob() on the HeadlightRestClient
-     * to intercept matching URLs and route them to the BlobStore instead
-     * of making network requests.
+     * Binary interception is handled at the RestClient level — the
+     * executeChunkedRequest wrapper routes binary download URLs to
+     * BlobStore, and the executeBinaryUpload wrapper routes binary
+     * upload URLs to BlobStore. This method simply stores the BlobStore
+     * and DirtyRecordTracker references that those wrappers check.
      *
-     * This is separate from connect() to keep the existing JSON interception
-     * on the Fable RestClient unchanged.
+     * Must be called after connect() — the RestClient wrappers must
+     * already be in place for binary routing to work.
      *
-     * @param {object} pHeadlightRestClient - HeadlightRestClient with postBinary/getBinaryBlob methods
      * @param {object} pBlobStoreManager - BlobStoreManager instance for IndexedDB storage
      * @param {object} pDirtyRecordTracker - DirtyRecordTracker instance for mutation tracking
      */
-    connectBinary(pHeadlightRestClient: object, pBlobStoreManager: object, pDirtyRecordTracker: object): void;
+    connectBinary(pBlobStoreManager: object, pDirtyRecordTracker: object): void;
     /**
-     * Disconnect binary interception from HeadlightRestClient.
+     * Disable binary interception.
      *
-     * Restores the original postBinary and getBinaryBlob functions.
+     * Clears BlobStore and DirtyRecordTracker references so the
+     * RestClient wrappers fall through to IPC or network for binary URLs.
      *
-     * @returns {boolean} True if successfully disconnected
+     * @returns {boolean} True if references were cleared
      */
     disconnectBinary(): boolean;
     /**

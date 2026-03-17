@@ -47,6 +47,12 @@ class RestClientInterceptor extends libFableServiceBase
 		this._originalExecuteChunkedRequest = null;
 
 		/**
+		 * The original executeBinaryUpload function, stashed for restore.
+		 * @type {function|null}
+		 */
+		this._originalExecuteBinaryUpload = null;
+
+		/**
 		 * The RestClient instance we are connected to.
 		 * @type {object|null}
 		 */
@@ -68,24 +74,6 @@ class RestClientInterceptor extends libFableServiceBase
 		// === Binary interception state ===
 
 		/**
-		 * The HeadlightRestClient instance we are binary-connected to.
-		 * @type {object|null}
-		 */
-		this._connectedHeadlightRestClient = null;
-
-		/**
-		 * The original postBinary function, stashed for restore.
-		 * @type {function|null}
-		 */
-		this._originalPostBinary = null;
-
-		/**
-		 * The original getBinaryBlob function, stashed for restore.
-		 * @type {function|null}
-		 */
-		this._originalGetBinaryBlob = null;
-
-		/**
 		 * The BlobStoreManager for binary storage.
 		 * @type {object|null}
 		 */
@@ -99,8 +87,8 @@ class RestClientInterceptor extends libFableServiceBase
 
 		/**
 		 * Additional RestClient instances that have been wrapped.
-		 * Each entry stores { restClient, originalExecuteJSONRequest, originalExecuteChunkedRequest }.
-		 * @type {Array<{ restClient: object, originalExecuteJSONRequest: function, originalExecuteChunkedRequest: function }>}
+		 * Each entry stores { restClient, originalExecuteJSONRequest, originalExecuteChunkedRequest, originalExecuteBinaryUpload }.
+		 * @type {Array<object>}
 		 */
 		this._additionalRestClients = [];
 	}
@@ -249,8 +237,113 @@ class RestClientInterceptor extends libFableServiceBase
 	}
 
 	/**
-	 * Connect to a RestClient, wrapping executeJSONRequest and
-	 * executeChunkedRequest with interception logic.
+	 * Check if a resolved URL path is a binary media URL (Artifact/Media).
+	 *
+	 * Used to distinguish binary URLs (routed to BlobStore) from entity
+	 * URLs (routed to IPC) when both match registered prefixes.
+	 *
+	 * @param {string} pURL - The URL to check (full or resolved pathname)
+	 * @returns {boolean} True if the URL matches a binary media pattern
+	 * @private
+	 */
+	_isBinaryURL(pURL)
+	{
+		let tmpPath = this._resolveURL(pURL);
+		return /\/1\.0\/Artifact\/Media\//.test(tmpPath);
+	}
+
+	/**
+	 * Handle an intercepted binary upload by routing to BlobStore.
+	 *
+	 * Parses the URL, stores the binary body in BlobStore, tracks the
+	 * mutation in DirtyRecordTracker, and returns a success response.
+	 *
+	 * @param {string} pURL - The request URL
+	 * @param {Buffer|Blob|File} pBody - The binary body
+	 * @param {string} pContentType - MIME type from Content-Type header
+	 * @param {function} fCallback - Callback (pError, pResponse, pBody)
+	 * @param {function} [fOnProgress] - Optional progress callback
+	 * @private
+	 */
+	_handleBinaryUpload(pURL, pBody, pContentType, fCallback, fOnProgress)
+	{
+		let tmpParsed = this._parseBinaryURL(pURL);
+		if (!tmpParsed)
+		{
+			return fCallback(new Error('Could not parse binary upload URL: ' + pURL));
+		}
+
+		let tmpBlobKey = `${tmpParsed.entity}:${tmpParsed.id}:v${tmpParsed.version}`;
+		let tmpMetadata = {
+			mimeType: pContentType,
+			fileName: (pBody && ('name' in pBody) ? pBody.name : 'upload'),
+			size: (pBody && ('size' in pBody ? pBody.size : ('length' in pBody ? pBody.length : 0))) || 0,
+			entityType: tmpParsed.entity,
+			entityID: tmpParsed.id,
+			version: tmpParsed.version,
+			createdAt: new Date().toISOString()
+		};
+
+		let tmpSelf = this;
+
+		this._BlobStore.storeBlob(tmpBlobKey, pBody, tmpMetadata,
+			(pError) =>
+			{
+				if (pError)
+				{
+					return fCallback(pError);
+				}
+
+				if (tmpSelf._DirtyTracker)
+				{
+					tmpSelf._DirtyTracker.trackBinaryMutation(
+						tmpParsed.entity, tmpParsed.id, tmpBlobKey, pContentType
+					);
+				}
+
+				if (typeof fOnProgress === 'function')
+				{
+					fOnProgress(1.0);
+				}
+
+				tmpSelf.log.info(`RestClientInterceptor: Binary upload intercepted → BlobStore [${tmpBlobKey}]`);
+				return fCallback(null, { statusCode: 200 }, JSON.stringify({ Success: true }));
+			});
+	}
+
+	/**
+	 * Handle an intercepted binary download by fetching from BlobStore.
+	 *
+	 * @param {string} pURL - The request URL
+	 * @param {function} fCallback - Callback (pError, pResponse, pBody)
+	 * @private
+	 */
+	_handleBinaryDownload(pURL, fCallback)
+	{
+		let tmpParsed = this._parseBinaryURL(pURL);
+		if (!tmpParsed)
+		{
+			return fCallback(new Error('Could not parse binary download URL: ' + pURL));
+		}
+
+		let tmpBlobKey = `${tmpParsed.entity}:${tmpParsed.id}:v${tmpParsed.version}`;
+		let tmpSelf = this;
+
+		this._BlobStore.getBlob(tmpBlobKey,
+			(pError, pResult) =>
+			{
+				if (pError || !pResult)
+				{
+					return fCallback(pError || new Error('Blob not found: ' + tmpBlobKey));
+				}
+				tmpSelf.log.info(`RestClientInterceptor: Binary download intercepted ← BlobStore [${tmpBlobKey}]`);
+				return fCallback(null, { statusCode: 200 }, pResult.blob);
+			});
+	}
+
+	/**
+	 * Connect to a RestClient, wrapping executeJSONRequest,
+	 * executeChunkedRequest, and executeBinaryUpload with interception logic.
 	 *
 	 * @param {object} pRestClient - A Fable RestClient service instance
 	 * @param {object} pIPCOratorManager - The IPC Orator Manager instance
@@ -280,6 +373,10 @@ class RestClientInterceptor extends libFableServiceBase
 		// Stash originals
 		this._originalExecuteJSONRequest = pRestClient.executeJSONRequest.bind(pRestClient);
 		this._originalExecuteChunkedRequest = pRestClient.executeChunkedRequest.bind(pRestClient);
+		if (typeof pRestClient.executeBinaryUpload === 'function')
+		{
+			this._originalExecuteBinaryUpload = pRestClient.executeBinaryUpload.bind(pRestClient);
+		}
 		this._connectedRestClient = pRestClient;
 
 		let tmpSelf = this;
@@ -318,6 +415,8 @@ class RestClientInterceptor extends libFableServiceBase
 		};
 
 		// Replace executeChunkedRequest with interception wrapper
+		// Binary download URLs (Artifact/Media) are routed to BlobStore;
+		// entity URLs are routed to IPC.
 		pRestClient.executeChunkedRequest = function(pOptions, fCallback)
 		{
 			let tmpOptions = pRestClient.preRequest(pOptions);
@@ -325,6 +424,13 @@ class RestClientInterceptor extends libFableServiceBase
 
 			if (tmpSelf.shouldIntercept(tmpURL))
 			{
+				// Binary download → BlobStore (if BlobStore is connected)
+				if (tmpSelf._BlobStore && tmpSelf._isBinaryURL(tmpURL))
+				{
+					return tmpSelf._handleBinaryDownload(tmpURL, fCallback);
+				}
+
+				// Entity request → IPC
 				let tmpResolvedURL = tmpSelf._normalizeRouteURL(tmpURL);
 				let tmpMethod = tmpOptions.method || 'GET';
 
@@ -346,6 +452,26 @@ class RestClientInterceptor extends libFableServiceBase
 				return tmpSelf._originalExecuteChunkedRequest(pOptions, fCallback);
 			}
 		};
+
+		// Replace executeBinaryUpload with interception wrapper (if available)
+		if (this._originalExecuteBinaryUpload)
+		{
+			pRestClient.executeBinaryUpload = function(pOptions, fCallback, fOnProgress)
+			{
+				let tmpOptions = pRestClient.preRequest(pOptions);
+				let tmpURL = tmpOptions.url || '';
+
+				if (tmpSelf.shouldIntercept(tmpURL) && tmpSelf._BlobStore)
+				{
+					let tmpContentType = (tmpOptions.headers && tmpOptions.headers['Content-Type']) || 'application/octet-stream';
+					return tmpSelf._handleBinaryUpload(tmpURL, pOptions.body, tmpContentType, fCallback, fOnProgress);
+				}
+				else
+				{
+					return tmpSelf._originalExecuteBinaryUpload(pOptions, fCallback, fOnProgress);
+				}
+			};
+		}
 
 		this.log.info('RestClientInterceptor: Connected to RestClient.');
 	}
@@ -395,11 +521,15 @@ class RestClientInterceptor extends libFableServiceBase
 		// Stash originals
 		let tmpOriginalExecuteJSON = pRestClient.executeJSONRequest.bind(pRestClient);
 		let tmpOriginalExecuteChunked = pRestClient.executeChunkedRequest.bind(pRestClient);
+		let tmpOriginalExecuteBinaryUpload = (typeof pRestClient.executeBinaryUpload === 'function')
+			? pRestClient.executeBinaryUpload.bind(pRestClient)
+			: null;
 
 		this._additionalRestClients.push({
 			restClient: pRestClient,
 			originalExecuteJSONRequest: tmpOriginalExecuteJSON,
-			originalExecuteChunkedRequest: tmpOriginalExecuteChunked
+			originalExecuteChunkedRequest: tmpOriginalExecuteChunked,
+			originalExecuteBinaryUpload: tmpOriginalExecuteBinaryUpload
 		});
 
 		let tmpSelf = this;
@@ -433,7 +563,7 @@ class RestClientInterceptor extends libFableServiceBase
 			}
 		};
 
-		// Wrap executeChunkedRequest
+		// Wrap executeChunkedRequest (with binary download awareness)
 		pRestClient.executeChunkedRequest = function(pOptions, fCallback)
 		{
 			let tmpOptions = pRestClient.preRequest(pOptions);
@@ -441,6 +571,13 @@ class RestClientInterceptor extends libFableServiceBase
 
 			if (tmpSelf.shouldIntercept(tmpURL))
 			{
+				// Binary download → BlobStore
+				if (tmpSelf._BlobStore && tmpSelf._isBinaryURL(tmpURL))
+				{
+					return tmpSelf._handleBinaryDownload(tmpURL, fCallback);
+				}
+
+				// Entity request → IPC
 				let tmpResolvedURL = tmpSelf._normalizeRouteURL(tmpURL);
 				let tmpMethod = tmpOptions.method || 'GET';
 
@@ -461,6 +598,26 @@ class RestClientInterceptor extends libFableServiceBase
 				return tmpOriginalExecuteChunked(pOptions, fCallback);
 			}
 		};
+
+		// Wrap executeBinaryUpload (if available)
+		if (tmpOriginalExecuteBinaryUpload)
+		{
+			pRestClient.executeBinaryUpload = function(pOptions, fCallback, fOnProgress)
+			{
+				let tmpOptions = pRestClient.preRequest(pOptions);
+				let tmpURL = tmpOptions.url || '';
+
+				if (tmpSelf.shouldIntercept(tmpURL) && tmpSelf._BlobStore)
+				{
+					let tmpContentType = (tmpOptions.headers && tmpOptions.headers['Content-Type']) || 'application/octet-stream';
+					return tmpSelf._handleBinaryUpload(tmpURL, pOptions.body, tmpContentType, fCallback, fOnProgress);
+				}
+				else
+				{
+					return tmpOriginalExecuteBinaryUpload(pOptions, fCallback, fOnProgress);
+				}
+			};
+		}
 
 		this.log.info(`RestClientInterceptor: Connected additional RestClient (${pRestClient.Hash || 'unknown'}).`);
 	}
@@ -487,10 +644,15 @@ class RestClientInterceptor extends libFableServiceBase
 
 		tmpRestClient.executeJSONRequest = this._originalExecuteJSONRequest;
 		tmpRestClient.executeChunkedRequest = this._originalExecuteChunkedRequest;
+		if (this._originalExecuteBinaryUpload)
+		{
+			tmpRestClient.executeBinaryUpload = this._originalExecuteBinaryUpload;
+		}
 
 		this._connectedRestClient = null;
 		this._originalExecuteJSONRequest = null;
 		this._originalExecuteChunkedRequest = null;
+		this._originalExecuteBinaryUpload = null;
 		this._IPCOratorManager = null;
 
 		// Disconnect additional RestClients
@@ -499,14 +661,15 @@ class RestClientInterceptor extends libFableServiceBase
 			let tmpEntry = this._additionalRestClients[i];
 			tmpEntry.restClient.executeJSONRequest = tmpEntry.originalExecuteJSONRequest;
 			tmpEntry.restClient.executeChunkedRequest = tmpEntry.originalExecuteChunkedRequest;
+			if (tmpEntry.originalExecuteBinaryUpload)
+			{
+				tmpEntry.restClient.executeBinaryUpload = tmpEntry.originalExecuteBinaryUpload;
+			}
 		}
 		this._additionalRestClients = [];
 
-		// Also disconnect binary interception if connected
-		if (this._connectedHeadlightRestClient)
-		{
-			this.disconnectBinary();
-		}
+		// Also clear binary references
+		this.disconnectBinary();
 
 		this.log.info('RestClientInterceptor: Disconnected from RestClient.');
 		return true;
@@ -517,158 +680,54 @@ class RestClientInterceptor extends libFableServiceBase
 	// ========================================================================
 
 	/**
-	 * Connect binary interception to a HeadlightRestClient.
+	 * Enable binary interception (BlobStore routing) on already-connected
+	 * RestClients.
 	 *
-	 * Wraps postBinary() and getBinaryBlob() on the HeadlightRestClient
-	 * to intercept matching URLs and route them to the BlobStore instead
-	 * of making network requests.
+	 * Binary interception is handled at the RestClient level — the
+	 * executeChunkedRequest wrapper routes binary download URLs to
+	 * BlobStore, and the executeBinaryUpload wrapper routes binary
+	 * upload URLs to BlobStore. This method simply stores the BlobStore
+	 * and DirtyRecordTracker references that those wrappers check.
 	 *
-	 * This is separate from connect() to keep the existing JSON interception
-	 * on the Fable RestClient unchanged.
+	 * Must be called after connect() — the RestClient wrappers must
+	 * already be in place for binary routing to work.
 	 *
-	 * @param {object} pHeadlightRestClient - HeadlightRestClient with postBinary/getBinaryBlob methods
 	 * @param {object} pBlobStoreManager - BlobStoreManager instance for IndexedDB storage
 	 * @param {object} pDirtyRecordTracker - DirtyRecordTracker instance for mutation tracking
 	 */
-	connectBinary(pHeadlightRestClient, pBlobStoreManager, pDirtyRecordTracker)
+	connectBinary(pBlobStoreManager, pDirtyRecordTracker)
 	{
-		if (!pHeadlightRestClient || !pBlobStoreManager)
+		if (!pBlobStoreManager)
 		{
-			this.log.error('RestClientInterceptor.connectBinary: Missing required references.');
+			this.log.error('RestClientInterceptor.connectBinary: Missing BlobStoreManager.');
 			return;
 		}
 
-		if (this._connectedHeadlightRestClient)
-		{
-			this.log.warn('RestClientInterceptor: Binary already connected. Disconnecting first.');
-			this.disconnectBinary();
-		}
-
 		this._BlobStore = pBlobStoreManager;
-		this._DirtyTracker = pDirtyRecordTracker;
-		this._connectedHeadlightRestClient = pHeadlightRestClient;
+		this._DirtyTracker = pDirtyRecordTracker || null;
 
-		// Stash originals
-		this._originalPostBinary = pHeadlightRestClient.postBinary.bind(pHeadlightRestClient);
-		this._originalGetBinaryBlob = pHeadlightRestClient.getBinaryBlob.bind(pHeadlightRestClient);
-
-		let tmpSelf = this;
-
-		// Wrap postBinary — intercept binary uploads to BlobStore
-		pHeadlightRestClient.postBinary = function(pURL, pFile, pMimeType, fCallback, fOnProgress)
-		{
-			let tmpFormattedURL = pHeadlightRestClient.formatUrl(pURL, true);
-
-			if (tmpSelf.shouldIntercept(tmpFormattedURL))
-			{
-				// Parse URL: /1.0/Artifact/Media/{IDArtifact}/{Version}
-				let tmpParsed = tmpSelf._parseBinaryURL(tmpFormattedURL);
-				if (!tmpParsed)
-				{
-					return fCallback(new Error('Could not parse binary upload URL: ' + pURL));
-				}
-
-				let tmpBlobKey = `${tmpParsed.entity}:${tmpParsed.id}:v${tmpParsed.version}`;
-				let tmpMetadata = {
-					mimeType: pMimeType,
-					fileName: (pFile && pFile.name) || 'upload',
-					size: (pFile && pFile.size) || 0,
-					entityType: tmpParsed.entity,
-					entityID: tmpParsed.id,
-					version: tmpParsed.version,
-					createdAt: new Date().toISOString()
-				};
-
-				tmpSelf._BlobStore.storeBlob(tmpBlobKey, pFile, tmpMetadata,
-					(pError) =>
-					{
-						if (pError)
-						{
-							return fCallback(pError);
-						}
-
-						// Track binary mutation for later sync
-						if (tmpSelf._DirtyTracker)
-						{
-							tmpSelf._DirtyTracker.trackBinaryMutation(
-								tmpParsed.entity, tmpParsed.id, tmpBlobKey, pMimeType
-							);
-						}
-
-						// Simulate instant completion
-						if (fOnProgress)
-						{
-							fOnProgress(1.0);
-						}
-						tmpSelf.log.info(`RestClientInterceptor: Binary upload intercepted → BlobStore [${tmpBlobKey}]`);
-						return fCallback(null, { Success: true });
-					});
-			}
-			else
-			{
-				return tmpSelf._originalPostBinary(pURL, pFile, pMimeType, fCallback, fOnProgress);
-			}
-		};
-
-		// Wrap getBinaryBlob — intercept binary downloads from BlobStore
-		pHeadlightRestClient.getBinaryBlob = function(pURL, fCallback)
-		{
-			let tmpFormattedURL = pHeadlightRestClient.formatUrl(pURL, true);
-
-			if (tmpSelf.shouldIntercept(tmpFormattedURL))
-			{
-				let tmpParsed = tmpSelf._parseBinaryURL(tmpFormattedURL);
-				if (!tmpParsed)
-				{
-					return fCallback(new Error('Could not parse binary download URL: ' + pURL));
-				}
-
-				let tmpBlobKey = `${tmpParsed.entity}:${tmpParsed.id}:v${tmpParsed.version}`;
-				tmpSelf._BlobStore.getBlob(tmpBlobKey,
-					(pError, pResult) =>
-					{
-						if (pError || !pResult)
-						{
-							return fCallback(pError || new Error('Blob not found: ' + tmpBlobKey));
-						}
-						tmpSelf.log.info(`RestClientInterceptor: Binary download intercepted ← BlobStore [${tmpBlobKey}]`);
-						return fCallback(null, pResult.blob);
-					});
-			}
-			else
-			{
-				return tmpSelf._originalGetBinaryBlob(pURL, fCallback);
-			}
-		};
-
-		this.log.info('RestClientInterceptor: Binary interception connected.');
+		this.log.info('RestClientInterceptor: Binary interception enabled (BlobStore connected).');
 	}
 
 	/**
-	 * Disconnect binary interception from HeadlightRestClient.
+	 * Disable binary interception.
 	 *
-	 * Restores the original postBinary and getBinaryBlob functions.
+	 * Clears BlobStore and DirtyRecordTracker references so the
+	 * RestClient wrappers fall through to IPC or network for binary URLs.
 	 *
-	 * @returns {boolean} True if successfully disconnected
+	 * @returns {boolean} True if references were cleared
 	 */
 	disconnectBinary()
 	{
-		if (!this._connectedHeadlightRestClient || !this._originalPostBinary)
+		if (!this._BlobStore)
 		{
-			this.log.warn('RestClientInterceptor.disconnectBinary: No connected HeadlightRestClient to disconnect.');
 			return false;
 		}
 
-		this._connectedHeadlightRestClient.postBinary = this._originalPostBinary;
-		this._connectedHeadlightRestClient.getBinaryBlob = this._originalGetBinaryBlob;
-
-		this._connectedHeadlightRestClient = null;
-		this._originalPostBinary = null;
-		this._originalGetBinaryBlob = null;
 		this._BlobStore = null;
 		this._DirtyTracker = null;
 
-		this.log.info('RestClientInterceptor: Binary interception disconnected.');
+		this.log.info('RestClientInterceptor: Binary interception disabled.');
 		return true;
 	}
 
