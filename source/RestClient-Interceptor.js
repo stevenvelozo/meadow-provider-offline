@@ -206,10 +206,46 @@ class RestClientInterceptor extends libFableServiceBase
 	 * @param {boolean} pParseJSON - Whether to JSON.parse the response data
 	 * @private
 	 */
-	_handleIPCResponse(pError, pResponseData, pSynthesizedResponse, fCallback, pParseJSON)
+	/**
+	 * Handle an IPC response.  If the IPC Orator returned a "Route not
+	 * found" error, optionally fall back to the original (network) REST
+	 * client so unhandled routes degrade gracefully to online calls.
+	 *
+	 * @param {Error|null} pError - Error from IPC invoke
+	 * @param {*} pResponseData - Response body from IPC
+	 * @param {object} pSynthesizedResponse - Synthesized response object with responseStatus
+	 * @param {function} fCallback - Original REST client callback
+	 * @param {boolean} pParseJSON - Whether to parse response as JSON
+	 * @param {function} [fFallback] - Optional fallback function to call when the IPC route is not found.
+	 *        When provided and the IPC returns a route-not-found error, this function is called instead
+	 *        of propagating the error — allowing the request to fall through to the real server.
+	 */
+	_handleIPCResponse(pError, pResponseData, pSynthesizedResponse, fCallback, pParseJSON, fFallback)
 	{
 		if (pError)
 		{
+			// If a fallback is provided and the error looks like a
+			// "route not found" from the IPC Orator, fall through to
+			// the original REST client for a real network call.
+			if (typeof fFallback === 'function')
+			{
+				let tmpErrorMsg = (typeof pError === 'string') ? pError : (pError.message || '');
+				let tmpIsRouteNotFound = tmpErrorMsg.indexOf('Route not found') >= 0;
+
+				// Also check for error objects with a Route property
+				if (!tmpIsRouteNotFound && pResponseData && typeof pResponseData === 'object')
+				{
+					tmpIsRouteNotFound = pResponseData.Error && typeof pResponseData.Error === 'object'
+						&& pResponseData.Error.StatusCode === 404;
+				}
+
+				if (tmpIsRouteNotFound)
+				{
+					this.log.info('RestClientInterceptor: IPC route not found — falling back to network.');
+					return fFallback();
+				}
+			}
+
 			return fCallback(pError);
 		}
 
@@ -404,7 +440,12 @@ class RestClientInterceptor extends libFableServiceBase
 					tmpMethod, tmpResolvedURL, null,
 					(pError, pResponseData, pSynthesizedResponse) =>
 					{
-						tmpSelf._handleIPCResponse(pError, pResponseData, pSynthesizedResponse, fCallback, true);
+						tmpSelf._handleIPCResponse(pError, pResponseData, pSynthesizedResponse, fCallback, true,
+							function ()
+							{
+								// Fallback: IPC had no route — pass through to network
+								return tmpSelf._originalExecuteJSONRequest(pOptions, fCallback);
+							});
 					});
 			}
 			else
@@ -444,7 +485,11 @@ class RestClientInterceptor extends libFableServiceBase
 					(pError, pResponseData, pSynthesizedResponse) =>
 					{
 						// For chunked requests, don't parse JSON
-						tmpSelf._handleIPCResponse(pError, pResponseData, pSynthesizedResponse, fCallback, false);
+						tmpSelf._handleIPCResponse(pError, pResponseData, pSynthesizedResponse, fCallback, false,
+							function ()
+							{
+								return tmpSelf._originalExecuteChunkedRequest(pOptions, fCallback);
+							});
 					});
 			}
 			else
@@ -554,7 +599,11 @@ class RestClientInterceptor extends libFableServiceBase
 					tmpMethod, tmpResolvedURL, null,
 					(pError, pResponseData, pSynthesizedResponse) =>
 					{
-						tmpSelf._handleIPCResponse(pError, pResponseData, pSynthesizedResponse, fCallback, true);
+						tmpSelf._handleIPCResponse(pError, pResponseData, pSynthesizedResponse, fCallback, true,
+							function ()
+							{
+								return tmpOriginalExecuteJSON(pOptions, fCallback);
+							});
 					});
 			}
 			else
@@ -590,7 +639,11 @@ class RestClientInterceptor extends libFableServiceBase
 					tmpMethod, tmpResolvedURL, null,
 					(pError, pResponseData, pSynthesizedResponse) =>
 					{
-						tmpSelf._handleIPCResponse(pError, pResponseData, pSynthesizedResponse, fCallback, false);
+						tmpSelf._handleIPCResponse(pError, pResponseData, pSynthesizedResponse, fCallback, false,
+							function ()
+							{
+								return tmpOriginalExecuteChunked(pOptions, fCallback);
+							});
 					});
 			}
 			else
@@ -599,8 +652,11 @@ class RestClientInterceptor extends libFableServiceBase
 			}
 		};
 
-		// Wrap executeBinaryUpload (if available)
-		if (tmpOriginalExecuteBinaryUpload)
+		// Wrap executeBinaryUpload — or ADD it if the RestClient doesn't
+		// have one natively (common in browser environments).  When BlobStore
+		// is connected, intercepted binary uploads are routed to IndexedDB.
+		// When there's no BlobStore and no original function, the upload is
+		// a no-op with an error callback.
 		{
 			pRestClient.executeBinaryUpload = function(pOptions, fCallback, fOnProgress)
 			{
@@ -612,9 +668,19 @@ class RestClientInterceptor extends libFableServiceBase
 					let tmpContentType = (tmpOptions.headers && tmpOptions.headers['Content-Type']) || 'application/octet-stream';
 					return tmpSelf._handleBinaryUpload(tmpURL, pOptions.body, tmpContentType, fCallback, fOnProgress);
 				}
-				else
+				else if (tmpOriginalExecuteBinaryUpload)
 				{
 					return tmpOriginalExecuteBinaryUpload(pOptions, fCallback, fOnProgress);
+				}
+				else
+				{
+					// No original and no BlobStore — cannot upload
+					let tmpError = new Error('executeBinaryUpload: no binary upload handler available');
+					tmpSelf.log.warn(tmpError.message);
+					if (typeof fCallback === 'function')
+					{
+						return fCallback(tmpError);
+					}
 				}
 			};
 		}

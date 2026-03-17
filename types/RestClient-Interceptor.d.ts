@@ -119,7 +119,21 @@ declare class RestClientInterceptor extends libFableServiceBase {
      * @param {boolean} pParseJSON - Whether to JSON.parse the response data
      * @private
      */
-    private _handleIPCResponse;
+    /**
+     * Handle an IPC response.  If the IPC Orator returned a "Route not
+     * found" error, optionally fall back to the original (network) REST
+     * client so unhandled routes degrade gracefully to online calls.
+     *
+     * @param {Error|null} pError - Error from IPC invoke
+     * @param {*} pResponseData - Response body from IPC
+     * @param {object} pSynthesizedResponse - Synthesized response object with responseStatus
+     * @param {function} fCallback - Original REST client callback
+     * @param {boolean} pParseJSON - Whether to parse response as JSON
+     * @param {function} [fFallback] - Optional fallback function to call when the IPC route is not found.
+     *        When provided and the IPC returns a route-not-found error, this function is called instead
+     *        of propagating the error — allowing the request to fall through to the real server.
+     */
+    _handleIPCResponse(pError: Error | null, pResponseData: any, pSynthesizedResponse: object, fCallback: Function, pParseJSON: boolean, fFallback?: Function): any;
     /**
      * Check if a resolved URL path is a binary media URL (Artifact/Media).
      *
