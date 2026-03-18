@@ -55,6 +55,14 @@ declare class MeadowProviderOffline extends libFableServiceBase {
      */
     initialized: boolean;
     /**
+     * Whether negative ID assignment is enabled for offline creates.
+     * When true, Create-PreOperation behaviors query MIN(ID) from the
+     * entity's SQLite table and assign the next ID below that (or -1
+     * if the table has no negative IDs yet).
+     * @type {boolean}
+     */
+    _negativeIDsEnabled: boolean;
+    /**
      * Get the Dirty Record Tracker.
      *
      * @returns {import('./Dirty-Record-Tracker.js')|null}
@@ -145,6 +153,18 @@ declare class MeadowProviderOffline extends libFableServiceBase {
      */
     removeEntity(pEntityName: string): void;
     /**
+     * Register multiple entities in a single batch call.
+     *
+     * Iterates through the schemas sequentially (createTable is synchronous
+     * under the hood) and calls the callback once at the end. Faster than
+     * calling addEntity() in a sequential async loop because it avoids
+     * per-entity microtask scheduling overhead.
+     *
+     * @param {Array<object>} pSchemas - Array of Meadow package schema objects
+     * @param {function} [fCallback] - Optional callback with (pError)
+     */
+    addEntities(pSchemas: Array<object>, fCallback?: Function): any;
+    /**
      * Seed an entity's SQLite table with records.
      *
      * Clears existing data and inserts the provided records.
@@ -206,10 +226,58 @@ declare class MeadowProviderOffline extends libFableServiceBase {
      */
     disableCacheThrough(): void;
     /**
-     * Add Create/Update/Delete PostOperation behaviors to track dirty records.
+     * Enable negative ID assignment for offline creates.
      *
-     * These behaviors fire after each IPC CRUD operation and record the
-     * mutation in the DirtyRecordTracker.
+     * When enabled, new records created via IPC query MIN(ID) from the
+     * entity's SQLite table and assign the next ID below that minimum.
+     * If the table has no rows or no negative IDs, starts at -1.
+     *
+     * This handles the case where negative-ID records persist across
+     * sessions — on reload, the next create picks up below the existing
+     * minimum, avoiding collisions.
+     */
+    enableNegativeIDs(): void;
+    /**
+     * Disable negative ID assignment for offline creates.
+     *
+     * New records will use SQLite AUTOINCREMENT (positive IDs).
+     */
+    disableNegativeIDs(): void;
+    /**
+     * Get the next negative ID for an entity by querying MIN(ID) from
+     * its SQLite table.
+     *
+     * Returns min(currentMin, 0) - 1, so:
+     *   - Empty table or all-positive IDs → -1
+     *   - Table has ID -3 as minimum → -4
+     *
+     * @param {string} pEntityName - The entity name
+     * @returns {number} The next negative ID to assign
+     */
+    getNextNegativeID(pEntityName: string): number;
+    /**
+     * Remap a record's primary key from an old ID to a new ID.
+     *
+     * Used after sync: when the server assigns a real positive ID to a
+     * record that was created offline with a negative ID, this method
+     * updates the local SQLite row and any foreign key references in
+     * other registered entity tables.
+     *
+     * @param {string} pEntityName - The entity whose primary key changed
+     * @param {number|string} pOldID - The old (negative) ID
+     * @param {number|string} pNewID - The new (server-assigned) ID
+     * @returns {number} The number of rows updated across all tables
+     */
+    remapID(pEntityName: string, pOldID: number | string, pNewID: number | string): number;
+    /**
+     * Add Create/Update/Delete behaviors to track dirty records and
+     * (optionally) assign negative IDs on create.
+     *
+     * PreOperation behaviors:
+     *   - Create-PreOperation: assigns a negative ID when negativeIDs are enabled
+     *
+     * PostOperation behaviors:
+     *   - Create/Update/Delete-PostOperation: track mutations in DirtyRecordTracker
      *
      * @param {string} pEntityName - The entity name
      * @param {object} pMeadowEndpoints - The MeadowEndpoints instance
