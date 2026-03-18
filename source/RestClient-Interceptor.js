@@ -91,6 +91,26 @@ class RestClientInterceptor extends libFableServiceBase
 		 * @type {Array<object>}
 		 */
 		this._additionalRestClients = [];
+
+		/**
+		 * Optional callback for cache-through ingestion.
+		 * When set, successful network fallback responses for GET requests
+		 * are passed to this callback so they can be stored in the local DB.
+		 *
+		 * Signature: (pEntityName, pData) => void
+		 * where pData is a single record object or an array of records.
+		 *
+		 * @type {function|null}
+		 */
+		this._cacheIngestCallback = null;
+
+		/**
+		 * Map from registered URL prefix to entity name.
+		 * Used by cache-through to identify which entity a network
+		 * fallback response belongs to.
+		 * @type {Record<string, string>}
+		 */
+		this._prefixEntityMap = {};
 	}
 
 	/**
@@ -100,10 +120,15 @@ class RestClientInterceptor extends libFableServiceBase
 	 * routed through IPC instead of HTTP.
 	 *
 	 * @param {string} pPrefix - URL path prefix (e.g., '/1.0/Book')
+	 * @param {string} [pEntityName] - Optional entity name for cache-through reverse-lookup
 	 */
-	registerPrefix(pPrefix)
+	registerPrefix(pPrefix, pEntityName)
 	{
 		this._registeredPrefixes[pPrefix] = true;
+		if (pEntityName)
+		{
+			this._prefixEntityMap[pPrefix] = pEntityName;
+		}
 		this.log.info(`RestClientInterceptor: Registered prefix ${pPrefix}`);
 	}
 
@@ -115,7 +140,50 @@ class RestClientInterceptor extends libFableServiceBase
 	unregisterPrefix(pPrefix)
 	{
 		delete this._registeredPrefixes[pPrefix];
+		delete this._prefixEntityMap[pPrefix];
 		this.log.info(`RestClientInterceptor: Unregistered prefix ${pPrefix}`);
+	}
+
+	/**
+	 * Set the cache-through ingest callback.
+	 *
+	 * When set, successful network fallback responses for GET requests
+	 * are passed to this callback for storage in the local SQLite DB.
+	 *
+	 * @param {function} fCallback - Callback with signature (pEntityName, pData)
+	 */
+	setCacheIngestCallback(fCallback)
+	{
+		this._cacheIngestCallback = (typeof fCallback === 'function') ? fCallback : null;
+	}
+
+	/**
+	 * Look up the entity name for a URL using longest-prefix matching.
+	 *
+	 * When multiple registered prefixes match (e.g., /1.0/Document and
+	 * /1.0/DocumentPolyJoin both match /1.0/DocumentPolyJoin/Upsert),
+	 * the longest prefix wins. This avoids brittle order-of-registration.
+	 *
+	 * @param {string} pURL - The request URL
+	 * @returns {string|null} The entity name, or null if no match
+	 */
+	getEntityForURL(pURL)
+	{
+		let tmpPath = this._resolveURL(pURL);
+		let tmpPrefixes = Object.keys(this._prefixEntityMap);
+		let tmpBestPrefix = null;
+		let tmpBestLength = 0;
+
+		for (let i = 0; i < tmpPrefixes.length; i++)
+		{
+			if (tmpPath.startsWith(tmpPrefixes[i]) && tmpPrefixes[i].length > tmpBestLength)
+			{
+				tmpBestPrefix = tmpPrefixes[i];
+				tmpBestLength = tmpPrefixes[i].length;
+			}
+		}
+
+		return tmpBestPrefix ? this._prefixEntityMap[tmpBestPrefix] : null;
 	}
 
 	/**
@@ -224,24 +292,28 @@ class RestClientInterceptor extends libFableServiceBase
 	{
 		if (pError)
 		{
-			// If a fallback is provided and the error looks like a
-			// "route not found" from the IPC Orator, fall through to
-			// the original REST client for a real network call.
+			// If a fallback is provided, check whether the IPC error is
+			// one we should fall through to the network for:
+			//   - "Route not found" — no IPC handler for this URL
+			//   - "Record not Found" — handler exists but SQLite has no row
+			// In both cases, the real server may be able to satisfy the
+			// request.
 			if (typeof fFallback === 'function')
 			{
 				let tmpErrorMsg = (typeof pError === 'string') ? pError : (pError.message || '');
-				let tmpIsRouteNotFound = tmpErrorMsg.indexOf('Route not found') >= 0;
+				let tmpErrorMsgLower = tmpErrorMsg.toLowerCase();
+				let tmpShouldFallback = tmpErrorMsgLower.indexOf('not found') >= 0;
 
-				// Also check for error objects with a Route property
-				if (!tmpIsRouteNotFound && pResponseData && typeof pResponseData === 'object')
+				// Also check for error objects with a 404 StatusCode
+				if (!tmpShouldFallback && pResponseData && typeof pResponseData === 'object')
 				{
-					tmpIsRouteNotFound = pResponseData.Error && typeof pResponseData.Error === 'object'
+					tmpShouldFallback = pResponseData.Error && typeof pResponseData.Error === 'object'
 						&& pResponseData.Error.StatusCode === 404;
 				}
 
-				if (tmpIsRouteNotFound)
+				if (tmpShouldFallback)
 				{
-					this.log.info('RestClientInterceptor: IPC route not found — falling back to network.');
+					this.log.info(`RestClientInterceptor: IPC error (${tmpErrorMsg.substring(0, 60)}) — falling back to network.`);
 					return fFallback();
 				}
 			}
@@ -269,7 +341,61 @@ class RestClientInterceptor extends libFableServiceBase
 				: 200
 		};
 
+		// Fall back to network on 404 "Record not Found" from local
+		// SQLite.  The record may exist on the server even if it's not
+		// in the local offline store yet.
+		if (typeof fFallback === 'function' && tmpResponse.statusCode === 404)
+		{
+			this.log.info('RestClientInterceptor: Local record not found (404) — falling back to network.');
+			return fFallback();
+		}
+
 		return fCallback(null, tmpResponse, tmpBody);
+	}
+
+	/**
+	 * Wrap a REST callback to intercept successful GET responses for
+	 * cache-through ingestion.  Non-GET requests and error responses
+	 * pass through unchanged.
+	 *
+	 * @param {string} pMethod - HTTP method (GET, POST, etc.)
+	 * @param {string} pURL - The request URL
+	 * @param {function} fOriginalCallback - The original callback to forward to
+	 * @returns {function} Wrapped callback
+	 * @private
+	 */
+	_wrapCallbackForCacheThrough(pMethod, pURL, fOriginalCallback)
+	{
+		if (pMethod !== 'GET' || !this._cacheIngestCallback)
+		{
+			return fOriginalCallback;
+		}
+
+		let tmpSelf = this;
+
+		return function (pError, pResponse, pBody)
+		{
+			// Only cache successful responses
+			if (!pError && pResponse && pResponse.statusCode >= 200 && pResponse.statusCode < 300)
+			{
+				let tmpEntityName = tmpSelf.getEntityForURL(pURL);
+				if (tmpEntityName)
+				{
+					try
+					{
+						let tmpData = (typeof pBody === 'string') ? JSON.parse(pBody) : pBody;
+						tmpSelf._cacheIngestCallback(tmpEntityName, tmpData);
+						tmpSelf.log.info(`RestClientInterceptor: Cache-through ingested ${tmpEntityName} data from network fallback.`);
+					}
+					catch (pParseError)
+					{
+						tmpSelf.log.warn(`RestClientInterceptor: Cache-through parse error for ${tmpEntityName}: ${pParseError.message}`);
+					}
+				}
+			}
+
+			return fOriginalCallback(pError, pResponse, pBody);
+		};
 	}
 
 	/**
@@ -444,7 +570,8 @@ class RestClientInterceptor extends libFableServiceBase
 							function ()
 							{
 								// Fallback: IPC had no route — pass through to network
-								return tmpSelf._originalExecuteJSONRequest(pOptions, fCallback);
+								return tmpSelf._originalExecuteJSONRequest(pOptions,
+									tmpSelf._wrapCallbackForCacheThrough(tmpMethod, tmpURL, fCallback));
 							});
 					});
 			}
@@ -602,7 +729,8 @@ class RestClientInterceptor extends libFableServiceBase
 						tmpSelf._handleIPCResponse(pError, pResponseData, pSynthesizedResponse, fCallback, true,
 							function ()
 							{
-								return tmpOriginalExecuteJSON(pOptions, fCallback);
+								return tmpOriginalExecuteJSON(pOptions,
+									tmpSelf._wrapCallbackForCacheThrough(tmpMethod, tmpURL, fCallback));
 							});
 					});
 			}

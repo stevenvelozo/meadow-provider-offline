@@ -347,6 +347,79 @@ class DataCacheManager extends libFableServiceBase
 
 		this.log.info(`DataCacheManager: Seeded ${tmpInsertedCount} records into ${pTableName}`);
 	}
+
+	/**
+	 * Ingest records into a table without clearing existing data.
+	 *
+	 * Uses INSERT OR IGNORE so records that already exist (by primary key)
+	 * are silently skipped. This is safe for cache-through because:
+	 *   - Locally-dirty records are never overwritten
+	 *   - Previously-seeded records are left intact
+	 *   - Only genuinely new records are added
+	 *
+	 * JSON/object column values are automatically stringified for storage.
+	 *
+	 * @param {string} pTableName - The table name
+	 * @param {Array<object>} pRecords - Array of record objects
+	 */
+	ingestRecords(pTableName, pRecords)
+	{
+		if (!this.initialized)
+		{
+			this.log.error('DataCacheManager: Not initialized. Call initializeAsync() first.');
+			return;
+		}
+
+		if (!Array.isArray(pRecords) || pRecords.length === 0)
+		{
+			return;
+		}
+
+		let tmpDb = this._sqliteConnection.db;
+
+		// Build INSERT OR IGNORE statement from the first record's columns
+		let tmpColumns = Object.keys(pRecords[0]);
+		let tmpColNames = tmpColumns.map((pCol) => '`' + pCol + '`').join(', ');
+		let tmpPlaceholders = tmpColumns.map((pCol) => ':' + pCol).join(', ');
+		let tmpSQL = `INSERT OR IGNORE INTO ${pTableName} (${tmpColNames}) VALUES (${tmpPlaceholders})`;
+
+		let tmpPrepared = tmpDb.prepare(tmpSQL);
+		let tmpIngestedCount = 0;
+
+		for (let i = 0; i < pRecords.length; i++)
+		{
+			let tmpBindParams = {};
+			for (let j = 0; j < tmpColumns.length; j++)
+			{
+				let tmpVal = pRecords[i][tmpColumns[j]];
+				if (typeof tmpVal === 'undefined')
+				{
+					tmpVal = null;
+				}
+				// Stringify objects/arrays for TEXT columns (JSON, arrays, etc.)
+				if (tmpVal !== null && typeof tmpVal === 'object')
+				{
+					tmpVal = JSON.stringify(tmpVal);
+				}
+				tmpBindParams[tmpColumns[j]] = tmpVal;
+			}
+
+			try
+			{
+				tmpPrepared.run(tmpBindParams);
+				tmpIngestedCount++;
+			}
+			catch (pError)
+			{
+				this.log.warn(`DataCacheManager: Error ingesting record ${i} into ${pTableName}: ${pError.message}`);
+			}
+		}
+
+		if (tmpIngestedCount > 0)
+		{
+			this.log.info(`DataCacheManager: Ingested ${tmpIngestedCount} record(s) into ${pTableName} (cache-through)`);
+		}
+	}
 }
 
 // Explicitly set isFableService — class field inheritance can break in

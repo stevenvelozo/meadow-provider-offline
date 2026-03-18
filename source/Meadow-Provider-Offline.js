@@ -385,7 +385,7 @@ class MeadowProviderOffline extends libFableServiceBase
 				// Register URL prefixes for interception
 				// meadow-endpoints uses the scope for singular routes and scope + 's' for plural
 				let tmpEndpointPrefix = `/${tmpEndpoints.EndpointVersion}/${tmpEndpoints.EndpointName}`;
-				tmpSelf._RestClientInterceptor.registerPrefix(tmpEndpointPrefix);
+				tmpSelf._RestClientInterceptor.registerPrefix(tmpEndpointPrefix, tmpEntityName);
 
 				// Store the entity
 				tmpSelf._Entities[tmpEntityName] = {
@@ -546,6 +546,64 @@ class MeadowProviderOffline extends libFableServiceBase
 	disconnect(pRestClient)
 	{
 		return this._RestClientInterceptor.disconnect(pRestClient);
+	}
+
+	// ========================================================================
+	// Cache-Through
+	// ========================================================================
+
+	/**
+	 * Enable cache-through mode.
+	 *
+	 * When enabled, GET requests that fall through to the network (because
+	 * the record is not in the local SQLite store) will have their
+	 * successful responses cached locally. Subsequent requests for the
+	 * same record will be served from SQLite without hitting the network.
+	 *
+	 * Safety: records with pending dirty mutations (local edits not yet
+	 * synced) are never overwritten by network responses.
+	 */
+	enableCacheThrough()
+	{
+		let tmpSelf = this;
+
+		this._RestClientInterceptor.setCacheIngestCallback(
+			(pEntityName, pData) =>
+			{
+				if (!tmpSelf._Entities[pEntityName])
+				{
+					return;
+				}
+
+				let tmpRecords = Array.isArray(pData) ? pData : [pData];
+
+				// Filter out records that have pending dirty mutations —
+				// the local version is authoritative until synced.
+				let tmpIDField = tmpSelf._Entities[pEntityName].schema.DefaultIdentifier;
+				let tmpCleanRecords = tmpRecords.filter(
+					(pRecord) =>
+					{
+						let tmpID = pRecord[tmpIDField];
+						let tmpKey = `${pEntityName}:${tmpID}`;
+						return !tmpSelf._DirtyRecordTracker._dirtyMap.hasOwnProperty(tmpKey);
+					});
+
+				if (tmpCleanRecords.length > 0)
+				{
+					tmpSelf._DataCacheManager.ingestRecords(pEntityName, tmpCleanRecords);
+				}
+			});
+
+		this.log.info('MeadowProviderOffline: Cache-through enabled.');
+	}
+
+	/**
+	 * Disable cache-through mode.
+	 */
+	disableCacheThrough()
+	{
+		this._RestClientInterceptor.setCacheIngestCallback(null);
+		this.log.info('MeadowProviderOffline: Cache-through disabled.');
 	}
 
 	// ========================================================================

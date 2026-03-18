@@ -96,6 +96,21 @@ declare class DataCacheManager extends libFableServiceBase {
      * @param {Array<object>} pRecords - Array of record objects
      */
     seedTable(pTableName: string, pRecords: Array<object>): void;
+    /**
+     * Ingest records into a table without clearing existing data.
+     *
+     * Uses INSERT OR IGNORE so records that already exist (by primary key)
+     * are silently skipped. This is safe for cache-through because:
+     *   - Locally-dirty records are never overwritten
+     *   - Previously-seeded records are left intact
+     *   - Only genuinely new records are added
+     *
+     * JSON/object column values are automatically stringified for storage.
+     *
+     * @param {string} pTableName - The table name
+     * @param {Array<object>} pRecords - Array of record objects
+     */
+    ingestRecords(pTableName: string, pRecords: Array<object>): void;
 }
 declare namespace DataCacheManager {
     export { isFableService, serviceType };

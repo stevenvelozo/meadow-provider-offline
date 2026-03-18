@@ -190,6 +190,22 @@ declare class MeadowProviderOffline extends libFableServiceBase {
      */
     disconnect(pRestClient?: object): boolean;
     /**
+     * Enable cache-through mode.
+     *
+     * When enabled, GET requests that fall through to the network (because
+     * the record is not in the local SQLite store) will have their
+     * successful responses cached locally. Subsequent requests for the
+     * same record will be served from SQLite without hitting the network.
+     *
+     * Safety: records with pending dirty mutations (local edits not yet
+     * synced) are never overwritten by network responses.
+     */
+    enableCacheThrough(): void;
+    /**
+     * Disable cache-through mode.
+     */
+    disableCacheThrough(): void;
+    /**
      * Add Create/Update/Delete PostOperation behaviors to track dirty records.
      *
      * These behaviors fire after each IPC CRUD operation and record the

@@ -58,20 +58,59 @@ declare class RestClientInterceptor extends libFableServiceBase {
      */
     _additionalRestClients: Array<object>;
     /**
+     * Optional callback for cache-through ingestion.
+     * When set, successful network fallback responses for GET requests
+     * are passed to this callback so they can be stored in the local DB.
+     *
+     * Signature: (pEntityName, pData) => void
+     * where pData is a single record object or an array of records.
+     *
+     * @type {function|null}
+     */
+    _cacheIngestCallback: Function | null;
+    /**
+     * Map from registered URL prefix to entity name.
+     * Used by cache-through to identify which entity a network
+     * fallback response belongs to.
+     * @type {Record<string, string>}
+     */
+    _prefixEntityMap: Record<string, string>;
+    /**
      * Register a URL prefix for interception.
      *
      * When a request URL path starts with this prefix, it will be
      * routed through IPC instead of HTTP.
      *
      * @param {string} pPrefix - URL path prefix (e.g., '/1.0/Book')
+     * @param {string} [pEntityName] - Optional entity name for cache-through reverse-lookup
      */
-    registerPrefix(pPrefix: string): void;
+    registerPrefix(pPrefix: string, pEntityName?: string): void;
     /**
      * Unregister a URL prefix.
      *
      * @param {string} pPrefix - URL path prefix to unregister
      */
     unregisterPrefix(pPrefix: string): void;
+    /**
+     * Set the cache-through ingest callback.
+     *
+     * When set, successful network fallback responses for GET requests
+     * are passed to this callback for storage in the local SQLite DB.
+     *
+     * @param {function} fCallback - Callback with signature (pEntityName, pData)
+     */
+    setCacheIngestCallback(fCallback: Function): void;
+    /**
+     * Look up the entity name for a URL using longest-prefix matching.
+     *
+     * When multiple registered prefixes match (e.g., /1.0/Document and
+     * /1.0/DocumentPolyJoin both match /1.0/DocumentPolyJoin/Upsert),
+     * the longest prefix wins. This avoids brittle order-of-registration.
+     *
+     * @param {string} pURL - The request URL
+     * @returns {string|null} The entity name, or null if no match
+     */
+    getEntityForURL(pURL: string): string | null;
     /**
      * Check if a URL should be intercepted.
      *
@@ -134,6 +173,18 @@ declare class RestClientInterceptor extends libFableServiceBase {
      *        of propagating the error — allowing the request to fall through to the real server.
      */
     _handleIPCResponse(pError: Error | null, pResponseData: any, pSynthesizedResponse: object, fCallback: Function, pParseJSON: boolean, fFallback?: Function): any;
+    /**
+     * Wrap a REST callback to intercept successful GET responses for
+     * cache-through ingestion.  Non-GET requests and error responses
+     * pass through unchanged.
+     *
+     * @param {string} pMethod - HTTP method (GET, POST, etc.)
+     * @param {string} pURL - The request URL
+     * @param {function} fOriginalCallback - The original callback to forward to
+     * @returns {function} Wrapped callback
+     * @private
+     */
+    private _wrapCallbackForCacheThrough;
     /**
      * Check if a resolved URL path is a binary media URL (Artifact/Media).
      *
