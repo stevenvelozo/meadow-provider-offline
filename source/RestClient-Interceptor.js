@@ -574,6 +574,10 @@ class RestClientInterceptor extends libFableServiceBase
 									tmpSelf._wrapCallbackForCacheThrough(tmpMethod, tmpURL, fCallback));
 							});
 					});
+
+				// Return a stub with .abort() so callers (e.g. Select2 AJAX)
+				// that hold onto the return value can safely call .abort().
+				return { abort: function () {} };
 			}
 			else
 			{
@@ -618,6 +622,8 @@ class RestClientInterceptor extends libFableServiceBase
 								return tmpSelf._originalExecuteChunkedRequest(pOptions, fCallback);
 							});
 					});
+
+				return { abort: function () {} };
 			}
 			else
 			{
@@ -733,6 +739,8 @@ class RestClientInterceptor extends libFableServiceBase
 									tmpSelf._wrapCallbackForCacheThrough(tmpMethod, tmpURL, fCallback));
 							});
 					});
+
+				return { abort: function () {} };
 			}
 			else
 			{
@@ -773,6 +781,8 @@ class RestClientInterceptor extends libFableServiceBase
 								return tmpOriginalExecuteChunked(pOptions, fCallback);
 							});
 					});
+
+				return { abort: function () {} };
 			}
 			else
 			{
