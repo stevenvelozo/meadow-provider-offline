@@ -15,6 +15,14 @@ export = BlobStoreManager;
  * @property {BlobMetadata} metadata - Associated metadata
  */
 /**
+ * @typedef {object} BlobStorageDelegate
+ * @property {(pKey: string, pBlobData: Blob|File|ArrayBuffer, pMetadata: BlobMetadata, fCallback: (pError?: Error) => void) => void} storeBlob
+ * @property {(pKey: string, fCallback: (pError?: Error, pBlobEntry?: BlobEntry) => void) => void} getBlob
+ * @property {(pKey: string, fCallback: (pError?: Error) => void) => void} deleteBlob
+ * @property {(pPrefix: string, fCallback: (pError?: Error, pEntries?: Array<{key: string, metadata: BlobMetadata}>) => void) => void} listBlobs
+ * @property {(fCallback: (pError?: Error) => void) => void} clearAll
+ */
+/**
  * @class BlobStoreManager
  * @extends libFableServiceBase
  */
@@ -43,23 +51,53 @@ declare class BlobStoreManager extends libFableServiceBase {
      */
     private _objectURLs;
     /**
+     * Optional external storage delegate. When set, all storage
+     * operations route through this delegate instead of IndexedDB.
+     * @type {BlobStorageDelegate|null}
+     * @private
+     */
+    private _storageDelegate;
+    /**
      * Whether the BlobStore is running in degraded (no-op) mode.
      *
-     * When IndexedDB is not available (e.g., Node.js test environment),
-     * the BlobStore initializes successfully but all storage operations
-     * return empty/null results instead of errors.
+     * When neither IndexedDB nor a storage delegate is available
+     * (e.g., Node.js test environment), the BlobStore initializes
+     * successfully but all storage operations return empty/null
+     * results instead of errors.
      *
      * @type {boolean}
      */
     get degraded(): boolean;
     /**
-     * Initialize the IndexedDB database.
+     * Set an external storage delegate for blob operations.
      *
-     * Opens (or creates) the `meadow-offline-blobs` database with a
-     * `blobs` object store keyed by string keys.
+     * When a delegate is provided, all storage operations (store, get,
+     * delete, list, clear) route through the delegate instead of
+     * IndexedDB. This enables native bridging in environments like
+     * iOS WKWebView where IndexedDB is unreliable.
      *
-     * In environments where IndexedDB is not available (e.g., Node.js),
-     * initializes in degraded mode — all operations succeed as no-ops.
+     * Call this before `initializeAsync()` to skip IndexedDB setup
+     * entirely, or after initialization to switch storage backends.
+     *
+     * The delegate must implement:
+     * - `storeBlob(pKey, pBlobData, pMetadata, fCallback)`
+     * - `getBlob(pKey, fCallback)` → callback(pError, { blob, metadata })
+     * - `deleteBlob(pKey, fCallback)`
+     * - `listBlobs(pPrefix, fCallback)` → callback(pError, [{ key, metadata }])
+     * - `clearAll(fCallback)`
+     *
+     * @param {BlobStorageDelegate} pDelegate - The storage delegate
+     */
+    setStorageDelegate(pDelegate: BlobStorageDelegate): void;
+    /**
+     * Initialize the blob storage backend.
+     *
+     * If a storage delegate has been set via `setStorageDelegate()`,
+     * IndexedDB initialization is skipped entirely. Otherwise, opens
+     * (or creates) the `meadow-offline-blobs` IndexedDB database.
+     *
+     * In environments where neither a delegate nor IndexedDB is
+     * available, initializes in degraded (no-op) mode.
      *
      * @param {(pError?: Error) => void} fCallback - Callback with (pError)
      */
@@ -127,7 +165,7 @@ declare class BlobStoreManager extends libFableServiceBase {
     revokeAllURLs(): void;
 }
 declare namespace BlobStoreManager {
-    export { isFableService, serviceType, BlobMetadata, BlobEntry };
+    export { isFableService, serviceType, BlobMetadata, BlobEntry, BlobStorageDelegate };
 }
 import libFableServiceBase = require("fable-serviceproviderbase");
 declare var isFableService: boolean;
@@ -171,5 +209,15 @@ type BlobEntry = {
      * - Associated metadata
      */
     metadata: BlobMetadata;
+};
+type BlobStorageDelegate = {
+    storeBlob: (pKey: string, pBlobData: Blob | File | ArrayBuffer, pMetadata: BlobMetadata, fCallback: (pError?: Error) => void) => void;
+    getBlob: (pKey: string, fCallback: (pError?: Error, pBlobEntry?: BlobEntry) => void) => void;
+    deleteBlob: (pKey: string, fCallback: (pError?: Error) => void) => void;
+    listBlobs: (pPrefix: string, fCallback: (pError?: Error, pEntries?: Array<{
+        key: string;
+        metadata: BlobMetadata;
+    }>) => void) => void;
+    clearAll: (fCallback: (pError?: Error) => void) => void;
 };
 //# sourceMappingURL=Blob-Store-Manager.d.ts.map

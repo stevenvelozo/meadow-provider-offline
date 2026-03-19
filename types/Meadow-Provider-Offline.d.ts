@@ -55,6 +55,14 @@ declare class MeadowProviderOffline extends libFableServiceBase {
      */
     initialized: boolean;
     /**
+     * Native bridge function for routing SQL queries to a native app.
+     * When set, the provider uses NativeBridge instead of in-memory
+     * SQLite (sql.js), eliminating the need for WASM/asm.js.
+     * @type {function|null}
+     * @private
+     */
+    private _nativeBridgeFunction;
+    /**
      * Whether negative ID assignment is enabled for offline creates.
      * When true, Create-PreOperation behaviors query MIN(ID) from the
      * entity's SQLite table and assign the next ID below that (or -1
@@ -110,9 +118,35 @@ declare class MeadowProviderOffline extends libFableServiceBase {
         schema: object;
     } | undefined;
     /**
+     * Set a native bridge function for routing SQL queries to a native app.
+     *
+     * When set (before `initializeAsync()`), the provider skips sql.js /
+     * DataCacheManager initialization entirely and instead routes all
+     * meadow provider queries through the bridge function to native
+     * SQLite. This eliminates the need for WASM or asm.js in the browser.
+     *
+     * The bridge function signature:
+     *   function(pQueryInfo, fCallback)
+     *     pQueryInfo: { sql: string, parameters: object, operation: string }
+     *     fCallback:  function(pError, pResult)
+     *       pResult: { rows: Array, lastInsertRowid: number, changes: number }
+     *
+     * Call this BEFORE `initializeAsync()`.
+     *
+     * @param {function} pBridgeFunction - The bridge function
+     */
+    setNativeBridge(pBridgeFunction: Function): void;
+    /**
+     * Whether the provider is using a native bridge instead of sql.js.
+     *
+     * @type {boolean}
+     */
+    get useNativeBridge(): boolean;
+    /**
      * Initialize the offline provider.
      *
-     * Sets up the SQLite database, Orator IPC, and sub-services.
+     * Sets up the SQLite database (or skips it when using native bridge),
+     * Orator IPC, and sub-services.
      * Must be called before addEntity() or connect().
      *
      * Options (from constructor pOptions):
@@ -254,7 +288,7 @@ declare class MeadowProviderOffline extends libFableServiceBase {
      * @param {string} pEntityName - The entity name
      * @returns {number} The next negative ID to assign
      */
-    getNextNegativeID(pEntityName: string): number;
+    getNextNegativeID(pEntityName: string, fCallback: any): number;
     /**
      * Remap a record's primary key from an old ID to a new ID.
      *

@@ -284,7 +284,10 @@ var MeadowProvider = function ()
 					}
 
 					tmpResult.error = null;
-					tmpResult.value = pNativeResult.affectedRows || 0;
+					// Meadow-Update.js checks typeof result.value === 'object'
+					// to decide if the update succeeded.  Return an object that
+					// mirrors what the MySQL provider produces.
+					tmpResult.value = { affectedRows: pNativeResult.affectedRows || 0 };
 					tmpResult.executed = true;
 					return fCallback();
 				});
