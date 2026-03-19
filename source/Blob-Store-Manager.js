@@ -1,9 +1,16 @@
 /**
- * Blob-Store-Manager - IndexedDB-backed binary storage for offline media.
+ * Blob-Store-Manager - Binary storage for offline media.
  *
- * Stores binary data (images, videos, files) in IndexedDB for offline
- * observation support. Each blob is stored with metadata (MIME type,
- * file name, size, etc.) and can be retrieved as a Blob or Object URL.
+ * Stores binary data (images, videos, files) for offline observation
+ * support. Each blob is stored with metadata (MIME type, file name,
+ * size, etc.) and can be retrieved as a Blob or Object URL.
+ *
+ * Storage backends:
+ * - **IndexedDB** (default): Used in standard browser environments.
+ * - **Custom delegate**: Set via `setStorageDelegate()` for environments
+ *   where IndexedDB is unavailable or undesirable (e.g., iOS WKWebView
+ *   bridging to native file storage). When a delegate is set, all
+ *   storage operations route through it instead of IndexedDB.
  *
  * Key format: `{entityType}:{localID}:v{version}` (e.g., `Artifact:3:v1`)
  *
@@ -30,6 +37,15 @@ const STORE_NAME = 'blobs';
  * @typedef {object} BlobEntry
  * @property {Blob} blob - The binary data
  * @property {BlobMetadata} metadata - Associated metadata
+ */
+
+/**
+ * @typedef {object} BlobStorageDelegate
+ * @property {(pKey: string, pBlobData: Blob|File|ArrayBuffer, pMetadata: BlobMetadata, fCallback: (pError?: Error) => void) => void} storeBlob
+ * @property {(pKey: string, fCallback: (pError?: Error, pBlobEntry?: BlobEntry) => void) => void} getBlob
+ * @property {(pKey: string, fCallback: (pError?: Error) => void) => void} deleteBlob
+ * @property {(pPrefix: string, fCallback: (pError?: Error, pEntries?: Array<{key: string, metadata: BlobMetadata}>) => void) => void} listBlobs
+ * @property {(fCallback: (pError?: Error) => void) => void} clearAll
  */
 
 /**
@@ -68,6 +84,14 @@ class BlobStoreManager extends libFableServiceBase
 		 * @private
 		 */
 		this._objectURLs = new Map();
+
+		/**
+		 * Optional external storage delegate. When set, all storage
+		 * operations route through this delegate instead of IndexedDB.
+		 * @type {BlobStorageDelegate|null}
+		 * @private
+		 */
+		this._storageDelegate = null;
 	}
 
 	// ========================================================================
@@ -77,25 +101,69 @@ class BlobStoreManager extends libFableServiceBase
 	/**
 	 * Whether the BlobStore is running in degraded (no-op) mode.
 	 *
-	 * When IndexedDB is not available (e.g., Node.js test environment),
-	 * the BlobStore initializes successfully but all storage operations
-	 * return empty/null results instead of errors.
+	 * When neither IndexedDB nor a storage delegate is available
+	 * (e.g., Node.js test environment), the BlobStore initializes
+	 * successfully but all storage operations return empty/null
+	 * results instead of errors.
 	 *
 	 * @type {boolean}
 	 */
 	get degraded()
 	{
-		return this.initialized && !this._db;
+		return this.initialized && !this._db && !this._storageDelegate;
 	}
 
 	/**
-	 * Initialize the IndexedDB database.
+	 * Set an external storage delegate for blob operations.
 	 *
-	 * Opens (or creates) the `meadow-offline-blobs` database with a
-	 * `blobs` object store keyed by string keys.
+	 * When a delegate is provided, all storage operations (store, get,
+	 * delete, list, clear) route through the delegate instead of
+	 * IndexedDB. This enables native bridging in environments like
+	 * iOS WKWebView where IndexedDB is unreliable.
 	 *
-	 * In environments where IndexedDB is not available (e.g., Node.js),
-	 * initializes in degraded mode — all operations succeed as no-ops.
+	 * Call this before `initializeAsync()` to skip IndexedDB setup
+	 * entirely, or after initialization to switch storage backends.
+	 *
+	 * The delegate must implement:
+	 * - `storeBlob(pKey, pBlobData, pMetadata, fCallback)`
+	 * - `getBlob(pKey, fCallback)` → callback(pError, { blob, metadata })
+	 * - `deleteBlob(pKey, fCallback)`
+	 * - `listBlobs(pPrefix, fCallback)` → callback(pError, [{ key, metadata }])
+	 * - `clearAll(fCallback)`
+	 *
+	 * @param {BlobStorageDelegate} pDelegate - The storage delegate
+	 */
+	setStorageDelegate(pDelegate)
+	{
+		if (!pDelegate)
+		{
+			this.log.warn('BlobStoreManager: setStorageDelegate called with falsy value — ignored.');
+			return;
+		}
+
+		let tmpRequiredMethods = ['storeBlob', 'getBlob', 'deleteBlob', 'listBlobs', 'clearAll'];
+		for (let i = 0; i < tmpRequiredMethods.length; i++)
+		{
+			if (typeof pDelegate[tmpRequiredMethods[i]] !== 'function')
+			{
+				this.log.error(`BlobStoreManager: Storage delegate missing required method "${tmpRequiredMethods[i]}" — delegate not set.`);
+				return;
+			}
+		}
+
+		this._storageDelegate = pDelegate;
+		this.log.info('BlobStoreManager: Storage delegate set — operations will route through delegate.');
+	}
+
+	/**
+	 * Initialize the blob storage backend.
+	 *
+	 * If a storage delegate has been set via `setStorageDelegate()`,
+	 * IndexedDB initialization is skipped entirely. Otherwise, opens
+	 * (or creates) the `meadow-offline-blobs` IndexedDB database.
+	 *
+	 * In environments where neither a delegate nor IndexedDB is
+	 * available, initializes in degraded (no-op) mode.
 	 *
 	 * @param {(pError?: Error) => void} fCallback - Callback with (pError)
 	 */
@@ -104,6 +172,14 @@ class BlobStoreManager extends libFableServiceBase
 		if (this.initialized)
 		{
 			this.log.warn('BlobStoreManager: Already initialized — skipping.');
+			return fCallback();
+		}
+
+		// If a storage delegate is set, skip IndexedDB entirely.
+		if (this._storageDelegate)
+		{
+			this.initialized = true;
+			this.log.info('BlobStoreManager: Storage delegate active — skipping IndexedDB initialization.');
 			return fCallback();
 		}
 
@@ -170,6 +246,11 @@ class BlobStoreManager extends libFableServiceBase
 	 */
 	storeBlob(pKey, pBlobData, pMetadata, fCallback)
 	{
+		if (this._storageDelegate)
+		{
+			return this._storageDelegate.storeBlob(pKey, pBlobData, pMetadata, fCallback);
+		}
+
 		if (!this._db)
 		{
 			if (this.degraded)
@@ -234,6 +315,11 @@ class BlobStoreManager extends libFableServiceBase
 	 */
 	getBlob(pKey, fCallback)
 	{
+		if (this._storageDelegate)
+		{
+			return this._storageDelegate.getBlob(pKey, fCallback);
+		}
+
 		if (!this._db)
 		{
 			if (this.degraded)
@@ -328,6 +414,18 @@ class BlobStoreManager extends libFableServiceBase
 	 */
 	deleteBlob(pKey, fCallback)
 	{
+		// Revoke any cached Object URL regardless of backend
+		if (this._objectURLs.has(pKey))
+		{
+			URL.revokeObjectURL(this._objectURLs.get(pKey));
+			this._objectURLs.delete(pKey);
+		}
+
+		if (this._storageDelegate)
+		{
+			return this._storageDelegate.deleteBlob(pKey, fCallback);
+		}
+
 		if (!this._db)
 		{
 			if (this.degraded)
@@ -335,13 +433,6 @@ class BlobStoreManager extends libFableServiceBase
 				return fCallback(null);
 			}
 			return fCallback(new Error('BlobStoreManager: Not initialized.'));
-		}
-
-		// Revoke any cached Object URL
-		if (this._objectURLs.has(pKey))
-		{
-			URL.revokeObjectURL(this._objectURLs.get(pKey));
-			this._objectURLs.delete(pKey);
 		}
 
 		try
@@ -384,6 +475,11 @@ class BlobStoreManager extends libFableServiceBase
 	 */
 	listBlobs(pPrefix, fCallback)
 	{
+		if (this._storageDelegate)
+		{
+			return this._storageDelegate.listBlobs(pPrefix, fCallback);
+		}
+
 		if (!this._db)
 		{
 			if (this.degraded)
@@ -451,6 +547,11 @@ class BlobStoreManager extends libFableServiceBase
 	clearAll(fCallback)
 	{
 		this.revokeAllURLs();
+
+		if (this._storageDelegate)
+		{
+			return this._storageDelegate.clearAll(fCallback);
+		}
 
 		if (!this._db)
 		{

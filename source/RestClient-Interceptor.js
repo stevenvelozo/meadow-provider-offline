@@ -696,19 +696,20 @@ class RestClientInterceptor extends libFableServiceBase
 			}
 		}
 
-		// Stash originals
-		let tmpOriginalExecuteJSON = pRestClient.executeJSONRequest.bind(pRestClient);
-		let tmpOriginalExecuteChunked = pRestClient.executeChunkedRequest.bind(pRestClient);
-		let tmpOriginalExecuteBinaryUpload = (typeof pRestClient.executeBinaryUpload === 'function')
-			? pRestClient.executeBinaryUpload.bind(pRestClient)
-			: null;
-
-		this._additionalRestClients.push({
+		// Stash originals in a mutable entry object.
+		// IMPORTANT: fallback closures reference the entry's properties
+		// (not local variables) so external code can patch them after
+		// connect — e.g. to route fallbacks through a native bridge.
+		let tmpEntry = {
 			restClient: pRestClient,
-			originalExecuteJSONRequest: tmpOriginalExecuteJSON,
-			originalExecuteChunkedRequest: tmpOriginalExecuteChunked,
-			originalExecuteBinaryUpload: tmpOriginalExecuteBinaryUpload
-		});
+			originalExecuteJSONRequest: pRestClient.executeJSONRequest.bind(pRestClient),
+			originalExecuteChunkedRequest: pRestClient.executeChunkedRequest.bind(pRestClient),
+			originalExecuteBinaryUpload: (typeof pRestClient.executeBinaryUpload === 'function')
+				? pRestClient.executeBinaryUpload.bind(pRestClient)
+				: null
+		};
+
+		this._additionalRestClients.push(tmpEntry);
 
 		let tmpSelf = this;
 
@@ -735,7 +736,7 @@ class RestClientInterceptor extends libFableServiceBase
 						tmpSelf._handleIPCResponse(pError, pResponseData, pSynthesizedResponse, fCallback, true,
 							function ()
 							{
-								return tmpOriginalExecuteJSON(pOptions,
+								return tmpEntry.originalExecuteJSONRequest(pOptions,
 									tmpSelf._wrapCallbackForCacheThrough(tmpMethod, tmpURL, fCallback));
 							});
 					});
@@ -744,7 +745,7 @@ class RestClientInterceptor extends libFableServiceBase
 			}
 			else
 			{
-				return tmpOriginalExecuteJSON(pOptions, fCallback);
+				return tmpEntry.originalExecuteJSONRequest(pOptions, fCallback);
 			}
 		};
 
@@ -778,7 +779,7 @@ class RestClientInterceptor extends libFableServiceBase
 						tmpSelf._handleIPCResponse(pError, pResponseData, pSynthesizedResponse, fCallback, false,
 							function ()
 							{
-								return tmpOriginalExecuteChunked(pOptions, fCallback);
+								return tmpEntry.originalExecuteChunkedRequest(pOptions, fCallback);
 							});
 					});
 
@@ -786,7 +787,7 @@ class RestClientInterceptor extends libFableServiceBase
 			}
 			else
 			{
-				return tmpOriginalExecuteChunked(pOptions, fCallback);
+				return tmpEntry.originalExecuteChunkedRequest(pOptions, fCallback);
 			}
 		};
 
@@ -806,9 +807,9 @@ class RestClientInterceptor extends libFableServiceBase
 					let tmpContentType = (tmpOptions.headers && tmpOptions.headers['Content-Type']) || 'application/octet-stream';
 					return tmpSelf._handleBinaryUpload(tmpURL, pOptions.body, tmpContentType, fCallback, fOnProgress);
 				}
-				else if (tmpOriginalExecuteBinaryUpload)
+				else if (tmpEntry.originalExecuteBinaryUpload)
 				{
-					return tmpOriginalExecuteBinaryUpload(pOptions, fCallback, fOnProgress);
+					return tmpEntry.originalExecuteBinaryUpload(pOptions, fCallback, fOnProgress);
 				}
 				else
 				{

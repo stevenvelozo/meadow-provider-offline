@@ -1,0 +1,10 @@
+{
+	"QuackageBaseGulpfile": "require('{~Data:AppData.CWD~}/source/build/Quackage-Gulpfile-Custom.js');\nrequire('{~Data:AppData.CWD~}/source/build/Quackage-Gulpfile-Custom.js');",
+	"GulpExecutions": [
+	{
+		"Hash": "default",
+		"Name": "Default standard build.",
+		"BuildFileLabel": "",
+		"BrowsersListRC": "since 2022"
+	}]
+}

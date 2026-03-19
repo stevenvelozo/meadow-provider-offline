@@ -45,6 +45,7 @@ const libIPCOratorManager = require('./IPC-Orator-Manager.js');
 const libRestClientInterceptor = require('./RestClient-Interceptor.js');
 const libDirtyRecordTracker = require('./Dirty-Record-Tracker.js');
 const libBlobStoreManager = require('./Blob-Store-Manager.js');
+const libNativeBridgeProvider = require('./Meadow-Provider-NativeBridge.js');
 
 /**
  * @class MeadowProviderOffline
@@ -110,6 +111,15 @@ class MeadowProviderOffline extends libFableServiceBase
 		 * @type {boolean}
 		 */
 		this.initialized = false;
+
+		/**
+		 * Native bridge function for routing SQL queries to a native app.
+		 * When set, the provider uses NativeBridge instead of in-memory
+		 * SQLite (sql.js), eliminating the need for WASM/asm.js.
+		 * @type {function|null}
+		 * @private
+		 */
+		this._nativeBridgeFunction = null;
 
 		/**
 		 * Whether negative ID assignment is enabled for offline creates.
@@ -197,13 +207,64 @@ class MeadowProviderOffline extends libFableServiceBase
 	}
 
 	// ========================================================================
+	// Native Bridge Configuration
+	// ========================================================================
+
+	/**
+	 * Set a native bridge function for routing SQL queries to a native app.
+	 *
+	 * When set (before `initializeAsync()`), the provider skips sql.js /
+	 * DataCacheManager initialization entirely and instead routes all
+	 * meadow provider queries through the bridge function to native
+	 * SQLite. This eliminates the need for WASM or asm.js in the browser.
+	 *
+	 * The bridge function signature:
+	 *   function(pQueryInfo, fCallback)
+	 *     pQueryInfo: { sql: string, parameters: object, operation: string }
+	 *     fCallback:  function(pError, pResult)
+	 *       pResult: { rows: Array, lastInsertRowid: number, changes: number }
+	 *
+	 * Call this BEFORE `initializeAsync()`.
+	 *
+	 * @param {function} pBridgeFunction - The bridge function
+	 */
+	setNativeBridge(pBridgeFunction)
+	{
+		if (typeof pBridgeFunction !== 'function')
+		{
+			this.log.error('MeadowProviderOffline: setNativeBridge called with non-function — ignored.');
+			return;
+		}
+
+		if (this.initialized)
+		{
+			this.log.error('MeadowProviderOffline: setNativeBridge must be called before initializeAsync().');
+			return;
+		}
+
+		this._nativeBridgeFunction = pBridgeFunction;
+		this.log.info('MeadowProviderOffline: Native bridge function set — will skip sql.js initialization.');
+	}
+
+	/**
+	 * Whether the provider is using a native bridge instead of sql.js.
+	 *
+	 * @type {boolean}
+	 */
+	get useNativeBridge()
+	{
+		return this._nativeBridgeFunction !== null;
+	}
+
+	// ========================================================================
 	// Initialization
 	// ========================================================================
 
 	/**
 	 * Initialize the offline provider.
 	 *
-	 * Sets up the SQLite database, Orator IPC, and sub-services.
+	 * Sets up the SQLite database (or skips it when using native bridge),
+	 * Orator IPC, and sub-services.
 	 * Must be called before addEntity() or connect().
 	 *
 	 * Options (from constructor pOptions):
@@ -224,8 +285,12 @@ class MeadowProviderOffline extends libFableServiceBase
 		}
 
 		// Create sub-services
-		this.fable.serviceManager.addServiceType('DataCacheManager', libDataCacheManager);
-		this._DataCacheManager = this.fable.serviceManager.instantiateServiceProvider('DataCacheManager', {}, `${this.Hash}-DataCache`);
+		// DataCacheManager is only needed when NOT using native bridge
+		if (!this._nativeBridgeFunction)
+		{
+			this.fable.serviceManager.addServiceType('DataCacheManager', libDataCacheManager);
+			this._DataCacheManager = this.fable.serviceManager.instantiateServiceProvider('DataCacheManager', {}, `${this.Hash}-DataCache`);
+		}
 
 		this.fable.serviceManager.addServiceType('IPCOratorManager', libIPCOratorManager);
 		this._IPCOratorManager = this.fable.serviceManager.instantiateServiceProvider('IPCOratorManager', {}, `${this.Hash}-IPCOrator`);
@@ -242,42 +307,63 @@ class MeadowProviderOffline extends libFableServiceBase
 		// Apply session configuration for browser-side meadow-endpoints
 		this._applySessionConfig();
 
-		// Initialize Data Cache Manager (SQLite)
-		this._DataCacheManager.initializeAsync(
-			(pError) =>
+		/**
+		 * Initialize remaining sub-services after the data layer is ready.
+		 * @param {Error|null} pDataLayerError
+		 */
+		let tmpInitializeRemainingServices = (pDataLayerError) =>
+		{
+			if (pDataLayerError)
 			{
-				if (pError)
+				return fCallback(pDataLayerError);
+			}
+
+			// Initialize IPC Orator Manager
+			tmpSelf._IPCOratorManager.initializeAsync(
+				(pOratorError) =>
 				{
-					tmpSelf.log.error('MeadowProviderOffline: Failed to initialize DataCacheManager', { Error: pError });
-					return fCallback(pError);
-				}
-
-				// Initialize IPC Orator Manager
-				tmpSelf._IPCOratorManager.initializeAsync(
-					(pOratorError) =>
+					if (pOratorError)
 					{
-						if (pOratorError)
+						tmpSelf.log.error('MeadowProviderOffline: Failed to initialize IPCOratorManager', { Error: pOratorError });
+						return fCallback(pOratorError);
+					}
+
+					// Initialize BlobStore Manager
+					tmpSelf._BlobStoreManager.initializeAsync(
+						(pBlobStoreError) =>
 						{
-							tmpSelf.log.error('MeadowProviderOffline: Failed to initialize IPCOratorManager', { Error: pOratorError });
-							return fCallback(pOratorError);
-						}
-
-						// Initialize BlobStore Manager (IndexedDB)
-						tmpSelf._BlobStoreManager.initializeAsync(
-							(pBlobStoreError) =>
+							if (pBlobStoreError)
 							{
-								if (pBlobStoreError)
-								{
-									tmpSelf.log.error('MeadowProviderOffline: Failed to initialize BlobStoreManager', { Error: pBlobStoreError });
-									return fCallback(pBlobStoreError);
-								}
+								tmpSelf.log.error('MeadowProviderOffline: Failed to initialize BlobStoreManager', { Error: pBlobStoreError });
+								return fCallback(pBlobStoreError);
+							}
 
-								tmpSelf.initialized = true;
-								tmpSelf.log.info('MeadowProviderOffline: Initialized successfully.');
-								return fCallback();
-							});
-					});
-			});
+							tmpSelf.initialized = true;
+							let tmpMode = tmpSelf._nativeBridgeFunction ? 'NativeBridge' : 'SQLite';
+							tmpSelf.log.info(`MeadowProviderOffline: Initialized successfully (mode: ${tmpMode}).`);
+							return fCallback();
+						});
+				});
+		};
+
+		// Initialize data layer — either DataCacheManager (sql.js) or skip for NativeBridge
+		if (this._nativeBridgeFunction)
+		{
+			this.log.info('MeadowProviderOffline: Using NativeBridge — skipping DataCacheManager/sql.js initialization.');
+			tmpInitializeRemainingServices(null);
+		}
+		else
+		{
+			this._DataCacheManager.initializeAsync(
+				(pError) =>
+				{
+					if (pError)
+					{
+						tmpSelf.log.error('MeadowProviderOffline: Failed to initialize DataCacheManager', { Error: pError });
+					}
+					tmpInitializeRemainingServices(pError);
+				});
+		}
 	}
 
 	/**
@@ -372,41 +458,73 @@ class MeadowProviderOffline extends libFableServiceBase
 		tmpDAL.setProvider('SQLite');
 		tmpDAL.setIDUser(1);
 
+		// If using NativeBridge, swap the provider's methods to route
+		// queries through the native bridge instead of sql.js.
+		if (this._nativeBridgeFunction)
+		{
+			let tmpNativeBridge = libNativeBridgeProvider.new(this.fable);
+			tmpNativeBridge.setBridge(this._nativeBridgeFunction);
+
+			let tmpProvider = tmpDAL.provider;
+			tmpProvider.Create = tmpNativeBridge.Create;
+			tmpProvider.Read = tmpNativeBridge.Read;
+			tmpProvider.Update = tmpNativeBridge.Update;
+			tmpProvider.Delete = tmpNativeBridge.Delete;
+			tmpProvider.Undelete = tmpNativeBridge.Undelete;
+			tmpProvider.Count = tmpNativeBridge.Count;
+			tmpProvider.marshalRecordFromSourceToObject = tmpNativeBridge.marshalRecordFromSourceToObject;
+		}
+
 		// Create MeadowEndpoints for this entity
 		let tmpEndpoints = libMeadowEndpoints.new(tmpDAL);
 
 		// Add dirty tracking behaviors
 		this._addDirtyTrackingBehaviors(tmpEntityName, tmpEndpoints);
 
-		// Create the SQLite table
-		this._DataCacheManager.createTable(pSchema,
-			(pTableError) =>
-			{
-				if (pTableError)
+		/**
+		 * Complete entity registration after table is ready.
+		 */
+		let tmpFinishRegistration = () =>
+		{
+			// Connect routes to IPC Orator
+			tmpSelf._IPCOratorManager.connectEntityRoutes(tmpEndpoints);
+
+			// Register URL prefixes for interception
+			// meadow-endpoints uses the scope for singular routes and scope + 's' for plural
+			let tmpEndpointPrefix = `/${tmpEndpoints.EndpointVersion}/${tmpEndpoints.EndpointName}`;
+			tmpSelf._RestClientInterceptor.registerPrefix(tmpEndpointPrefix, tmpEntityName);
+
+			// Store the entity
+			tmpSelf._Entities[tmpEntityName] = {
+				dal: tmpDAL,
+				endpoints: tmpEndpoints,
+				schema: pSchema
+			};
+			tmpSelf._EntityNames.push(tmpEntityName);
+
+			tmpSelf.log.info(`MeadowProviderOffline: Entity ${tmpEntityName} registered (prefix: ${tmpEndpointPrefix})`);
+			return tmpCallback();
+		};
+
+		if (this._nativeBridgeFunction)
+		{
+			// NativeBridge: tables are managed by the native app — skip createTable
+			tmpFinishRegistration();
+		}
+		else
+		{
+			// SQLite (sql.js): create the table in the in-memory database
+			this._DataCacheManager.createTable(pSchema,
+				(pTableError) =>
 				{
-					tmpSelf.log.error(`MeadowProviderOffline: Error creating table for ${tmpEntityName}`, { Error: pTableError });
-					return tmpCallback(pTableError);
-				}
-
-				// Connect routes to IPC Orator
-				tmpSelf._IPCOratorManager.connectEntityRoutes(tmpEndpoints);
-
-				// Register URL prefixes for interception
-				// meadow-endpoints uses the scope for singular routes and scope + 's' for plural
-				let tmpEndpointPrefix = `/${tmpEndpoints.EndpointVersion}/${tmpEndpoints.EndpointName}`;
-				tmpSelf._RestClientInterceptor.registerPrefix(tmpEndpointPrefix, tmpEntityName);
-
-				// Store the entity
-				tmpSelf._Entities[tmpEntityName] = {
-					dal: tmpDAL,
-					endpoints: tmpEndpoints,
-					schema: pSchema
-				};
-				tmpSelf._EntityNames.push(tmpEntityName);
-
-				tmpSelf.log.info(`MeadowProviderOffline: Entity ${tmpEntityName} registered (prefix: ${tmpEndpointPrefix})`);
-				return tmpCallback();
-			});
+					if (pTableError)
+					{
+						tmpSelf.log.error(`MeadowProviderOffline: Error creating table for ${tmpEntityName}`, { Error: pTableError });
+						return tmpCallback(pTableError);
+					}
+					tmpFinishRegistration();
+				});
+		}
 	}
 
 	/**
@@ -515,6 +633,13 @@ class MeadowProviderOffline extends libFableServiceBase
 			let tmpError = new Error(`MeadowProviderOffline: Entity ${pEntityName} not registered. Call addEntity() first.`);
 			this.log.error(tmpError.message);
 			return tmpCallback(tmpError);
+		}
+
+		if (this._nativeBridgeFunction)
+		{
+			// NativeBridge: data is managed by the native app — seeding is a no-op.
+			this.log.info(`MeadowProviderOffline: seedEntity(${pEntityName}) skipped — NativeBridge mode (native app manages data).`);
+			return tmpCallback();
 		}
 
 		this._DataCacheManager.seedTable(pEntityName, pRecords);
@@ -655,7 +780,22 @@ class MeadowProviderOffline extends libFableServiceBase
 
 				if (tmpCleanRecords.length > 0)
 				{
-					tmpSelf._DataCacheManager.ingestRecords(pEntityName, tmpCleanRecords);
+					if (tmpSelf._nativeBridgeFunction)
+					{
+						// NativeBridge: cache-through ingestion goes through bridge
+						tmpSelf._nativeBridgeFunction(
+							{
+								sql: '__INGEST_RECORDS__',
+								parameters: { entityName: pEntityName, records: tmpCleanRecords },
+								operation: 'CacheThrough'
+							},
+							() => {} // Fire-and-forget
+						);
+					}
+					else
+					{
+						tmpSelf._DataCacheManager.ingestRecords(pEntityName, tmpCleanRecords);
+					}
 				}
 			});
 
@@ -714,27 +854,67 @@ class MeadowProviderOffline extends libFableServiceBase
 	 * @param {string} pEntityName - The entity name
 	 * @returns {number} The next negative ID to assign
 	 */
-	getNextNegativeID(pEntityName)
+	getNextNegativeID(pEntityName, fCallback)
 	{
 		let tmpEntity = this._Entities[pEntityName];
 		if (!tmpEntity)
 		{
+			if (typeof fCallback === 'function')
+			{
+				return fCallback(null, -1);
+			}
 			return -1;
 		}
 
 		let tmpIDField = tmpEntity.schema.DefaultIdentifier;
+		let tmpSelf = this;
 
+		if (this._nativeBridgeFunction)
+		{
+			// NativeBridge: query via the bridge asynchronously
+			let tmpSQL = `SELECT MIN(\`${tmpIDField}\`) AS minID FROM \`${pEntityName}\``;
+			this._nativeBridgeFunction({ sql: tmpSQL, parameters: {}, operation: 'GetNextNegativeID' },
+				(pError, pResult) =>
+				{
+					if (pError || !pResult || !pResult.rows || pResult.rows.length === 0)
+					{
+						if (typeof fCallback === 'function')
+						{
+							return fCallback(null, -1);
+						}
+						return;
+					}
+					let tmpMinID = (pResult.rows[0] && pResult.rows[0].minID !== null) ? pResult.rows[0].minID : 0;
+					let tmpNextID = Math.min(tmpMinID, 0) - 1;
+					if (typeof fCallback === 'function')
+					{
+						return fCallback(null, tmpNextID);
+					}
+				});
+			return; // Async — caller must use callback
+		}
+
+		// SQLite (sql.js): synchronous query
 		try
 		{
 			let tmpRow = this._DataCacheManager.db
 				.prepare(`SELECT MIN(\`${tmpIDField}\`) AS minID FROM \`${pEntityName}\``)
 				.get();
 			let tmpMinID = (tmpRow && tmpRow.minID !== null) ? tmpRow.minID : 0;
-			return Math.min(tmpMinID, 0) - 1;
+			let tmpNextID = Math.min(tmpMinID, 0) - 1;
+			if (typeof fCallback === 'function')
+			{
+				return fCallback(null, tmpNextID);
+			}
+			return tmpNextID;
 		}
 		catch (pError)
 		{
 			this.log.warn(`MeadowProviderOffline: Error querying MIN(ID) for ${pEntityName}: ${pError.message}`);
+			if (typeof fCallback === 'function')
+			{
+				return fCallback(null, -1);
+			}
 			return -1;
 		}
 	}
