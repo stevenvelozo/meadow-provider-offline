@@ -173,31 +173,38 @@ suite
 								Expect(pEntityError).to.not.exist;
 
 								tmpProvider.enableNegativeIDs();
-								Expect(tmpProvider.getNextNegativeID('Book')).to.equal(-1);
-
-								invokeIPC(tmpProvider, 'POST', '/1.0/Book', { Title: 'Offline Book 1' },
-									(pErr, pData) =>
-									{
-										Expect(pErr).to.not.exist;
-										Expect(pData.IDBook).to.equal(-1);
-										Expect(pData.Title).to.equal('Offline Book 1');
-										Expect(tmpProvider.getNextNegativeID('Book')).to.equal(-2);
-
-										invokeIPC(tmpProvider, 'POST', '/1.0/Book', { Title: 'Offline Book 2' },
-											(pErr2, pData2) =>
+								tmpProvider.getNextNegativeID('Book', (error, id) =>
+								{
+									Expect(error).to.not.exist;
+									Expect(id).to.equal(-1);
+									invokeIPC(tmpProvider, 'POST', '/1.0/Book', { Title: 'Offline Book 1' },
+										(pErr, pData) =>
+										{
+											Expect(pErr).to.not.exist;
+											Expect(pData.IDBook).to.equal(-1);
+											Expect(pData.Title).to.equal('Offline Book 1');
+											tmpProvider.getNextNegativeID('Book', (error, id) =>
 											{
-												Expect(pErr2).to.not.exist;
-												Expect(pData2.IDBook).to.equal(-2);
+												Expect(error).to.not.exist;
+												Expect(id).to.equal(-2);
+												invokeIPC(tmpProvider, 'POST', '/1.0/Book', { Title: 'Offline Book 2' },
+													(pErr2, pData2) =>
+													{
+														Expect(pErr2).to.not.exist;
+														Expect(pData2.IDBook).to.equal(-2);
 
-												let tmpRows = tmpProvider.dataCacheManager.db
-													.prepare('SELECT * FROM Book ORDER BY IDBook')
-													.all();
-												Expect(tmpRows).to.have.length(2);
-												Expect(tmpRows[0].IDBook).to.equal(-2);
-												Expect(tmpRows[1].IDBook).to.equal(-1);
-												fDone();
+														let tmpRows = tmpProvider.dataCacheManager.db
+															.prepare('SELECT * FROM Book ORDER BY IDBook')
+															.all();
+														Expect(tmpRows).to.have.length(2);
+														Expect(tmpRows[0].IDBook).to.equal(-2);
+														Expect(tmpRows[1].IDBook).to.equal(-1);
+														fDone();
+													});
 											});
-									});
+										});
+								});
+
 							});
 					});
 			}
@@ -436,19 +443,27 @@ suite
 								tmpProvider.enableNegativeIDs();
 
 								// Next ID should be -4 (below existing -3)
-								Expect(tmpProvider.getNextNegativeID('Book')).to.equal(-4);
+								tmpProvider.getNextNegativeID('Book', (error, id) =>
+								{
+									Expect(error).to.not.exist;
+									Expect(id).to.equal(-4);
 
-								invokeIPC(tmpProvider, 'POST', '/1.0/Book', { Title: 'New Session Book' },
-									(pErr, pData) =>
-									{
-										Expect(pErr).to.not.exist;
-										Expect(pData.IDBook).to.equal(-4);
+									invokeIPC(tmpProvider, 'POST', '/1.0/Book', { Title: 'New Session Book' },
+										(pErr, pData) =>
+										{
+											Expect(pErr).to.not.exist;
+											Expect(pData.IDBook).to.equal(-4);
 
-										// Next should be -5
-										Expect(tmpProvider.getNextNegativeID('Book')).to.equal(-5);
+											// Next should be -5
+											tmpProvider.getNextNegativeID('Book', (error, id) =>
+											{
+												Expect(error).to.not.exist;
+												Expect(id).to.equal(-5);
 
-										fDone();
-									});
+												fDone();
+											});
+										});
+								});
 							});
 					});
 			}
@@ -625,8 +640,12 @@ suite
 								]);
 
 								// Next negative ID should still be -1
-								Expect(tmpProvider.getNextNegativeID('Book')).to.equal(-1);
-								fDone();
+								tmpProvider.getNextNegativeID('Book', (error, id) =>
+								{
+									Expect(error).to.not.exist;
+									Expect(id).to.equal(-1);
+									fDone();
+								});
 							});
 					});
 			}

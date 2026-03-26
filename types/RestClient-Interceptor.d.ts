@@ -283,6 +283,7 @@ declare class RestClientInterceptor extends libFableServiceBase {
      * Handles URLs like:
      *   /1.0/Artifact/Media/{IDArtifact}/{Version}
      *   http://server/1.0/Artifact/Media/123/1
+     *   /1.0/Artifact/Media/-11/1          (negative offline IDs)
      *
      * @param {string} pURL - The full or relative URL
      * @returns {{ entity: string, id: string|number, version: string|number }|null}

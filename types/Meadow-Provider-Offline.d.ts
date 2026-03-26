@@ -286,9 +286,10 @@ declare class MeadowProviderOffline extends libFableServiceBase {
      *   - Table has ID -3 as minimum → -4
      *
      * @param {string} pEntityName - The entity name
-     * @returns {number} The next negative ID to assign
+     * @param {(pError?: Error, pNextID?: number) => void} fCallback
+     * @returns {void} The next negative ID to assign
      */
-    getNextNegativeID(pEntityName: string, fCallback: any): number;
+    getNextNegativeID(pEntityName: string, fCallback: (pError?: Error, pNextID?: number) => void): void;
     /**
      * Remap a record's primary key from an old ID to a new ID.
      *
@@ -317,7 +318,36 @@ declare class MeadowProviderOffline extends libFableServiceBase {
      * @param {object} pMeadowEndpoints - The MeadowEndpoints instance
      * @private
      */
-    private _addDirtyTrackingBehaviors;
+    /**
+     * Patch the Update endpoint handler to accept negative IDs.
+     *
+     * The standard meadow-endpoints Update handler rejects records with
+     * ID < 1 (designed for server-side validation). For offline use,
+     * records created with negative IDs need to be updatable.
+     *
+     * This replaces the endpoint's doUpdate function with one that
+     * allows non-zero negative IDs, while keeping all other validation
+     * and behavior injection intact.
+     *
+     * @param {object} pMeadowEndpoints - The MeadowEndpoints instance.
+     * @private
+     */
+    /**
+     * Patch the Update endpoint handler to accept negative IDs.
+     *
+     * The standard meadow-endpoints Update handler rejects records with
+     * ID < 1 (designed for server-side validation). For offline use,
+     * records created with negative IDs need to be updatable.
+     *
+     * Replaces _Endpoints.Update with a version that accepts non-zero
+     * negative IDs while keeping all other validation and behavior
+     * injection intact.
+     *
+     * @param {object} pMeadowEndpoints - The MeadowEndpoints instance.
+     * @private
+     */
+    private _patchUpdateEndpointForNegativeIDs;
+    _addDirtyTrackingBehaviors(pEntityName: any, pMeadowEndpoints: any): void;
 }
 declare namespace MeadowProviderOffline {
     export { isFableService, serviceType };

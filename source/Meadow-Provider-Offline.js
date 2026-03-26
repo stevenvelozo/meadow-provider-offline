@@ -486,6 +486,12 @@ class MeadowProviderOffline extends libFableServiceBase
 		 */
 		let tmpFinishRegistration = () =>
 		{
+			// Patch the Update endpoint to accept negative IDs.
+			// Always applied — there's no harm in accepting negative IDs
+			// even when enableNegativeIDs() isn't called, and the patch must
+			// happen before connectEntityRoutes() binds the route handlers.
+			tmpSelf._patchUpdateEndpointForNegativeIDs(tmpEndpoints);
+
 			// Connect routes to IPC Orator
 			tmpSelf._IPCOratorManager.connectEntityRoutes(tmpEndpoints);
 
@@ -852,22 +858,18 @@ class MeadowProviderOffline extends libFableServiceBase
 	 *   - Table has ID -3 as minimum → -4
 	 *
 	 * @param {string} pEntityName - The entity name
-	 * @returns {number} The next negative ID to assign
+	 * @param {(pError?: Error, pNextID?: number) => void} fCallback
+	 * @returns {void} The next negative ID to assign
 	 */
 	getNextNegativeID(pEntityName, fCallback)
 	{
 		let tmpEntity = this._Entities[pEntityName];
 		if (!tmpEntity)
 		{
-			if (typeof fCallback === 'function')
-			{
-				return fCallback(null, -1);
-			}
-			return -1;
+			return fCallback(null, -1);
 		}
 
 		let tmpIDField = tmpEntity.schema.DefaultIdentifier;
-		let tmpSelf = this;
 
 		if (this._nativeBridgeFunction)
 		{
@@ -878,18 +880,11 @@ class MeadowProviderOffline extends libFableServiceBase
 				{
 					if (pError || !pResult || !pResult.rows || pResult.rows.length === 0)
 					{
-						if (typeof fCallback === 'function')
-						{
-							return fCallback(null, -1);
-						}
-						return;
+						return fCallback(null, -1);
 					}
 					let tmpMinID = (pResult.rows[0] && pResult.rows[0].minID !== null) ? pResult.rows[0].minID : 0;
 					let tmpNextID = Math.min(tmpMinID, 0) - 1;
-					if (typeof fCallback === 'function')
-					{
-						return fCallback(null, tmpNextID);
-					}
+					return fCallback(null, tmpNextID);
 				});
 			return; // Async — caller must use callback
 		}
@@ -902,20 +897,12 @@ class MeadowProviderOffline extends libFableServiceBase
 				.get();
 			let tmpMinID = (tmpRow && tmpRow.minID !== null) ? tmpRow.minID : 0;
 			let tmpNextID = Math.min(tmpMinID, 0) - 1;
-			if (typeof fCallback === 'function')
-			{
-				return fCallback(null, tmpNextID);
-			}
-			return tmpNextID;
+			return fCallback(null, tmpNextID);
 		}
 		catch (pError)
 		{
 			this.log.warn(`MeadowProviderOffline: Error querying MIN(ID) for ${pEntityName}: ${pError.message}`);
-			if (typeof fCallback === 'function')
-			{
-				return fCallback(null, -1);
-			}
-			return -1;
+			return fCallback(null, -1);
 		}
 	}
 
@@ -1032,6 +1019,112 @@ class MeadowProviderOffline extends libFableServiceBase
 	 * @param {object} pMeadowEndpoints - The MeadowEndpoints instance
 	 * @private
 	 */
+	/**
+	 * Patch the Update endpoint handler to accept negative IDs.
+	 *
+	 * The standard meadow-endpoints Update handler rejects records with
+	 * ID < 1 (designed for server-side validation). For offline use,
+	 * records created with negative IDs need to be updatable.
+	 *
+	 * This replaces the endpoint's doUpdate function with one that
+	 * allows non-zero negative IDs, while keeping all other validation
+	 * and behavior injection intact.
+	 *
+	 * @param {object} pMeadowEndpoints - The MeadowEndpoints instance.
+	 * @private
+	 */
+	/**
+	 * Patch the Update endpoint handler to accept negative IDs.
+	 *
+	 * The standard meadow-endpoints Update handler rejects records with
+	 * ID < 1 (designed for server-side validation). For offline use,
+	 * records created with negative IDs need to be updatable.
+	 *
+	 * Replaces _Endpoints.Update with a version that accepts non-zero
+	 * negative IDs while keeping all other validation and behavior
+	 * injection intact.
+	 *
+	 * @param {object} pMeadowEndpoints - The MeadowEndpoints instance.
+	 * @private
+	 */
+	_patchUpdateEndpointForNegativeIDs(pMeadowEndpoints)
+	{
+		if (!pMeadowEndpoints._Endpoints || !pMeadowEndpoints._Endpoints.Update)
+		{
+			this.log.warn('MeadowProviderOffline: Could not find _Endpoints.Update to patch for negative IDs.');
+			return;
+		}
+
+		let tmpDoUpdateOperation = require(
+			'meadow-endpoints/source/endpoints/update/Meadow-Operation-Update.js');
+
+		// Replace the Update endpoint handler with one that accepts negative IDs.
+		// This is a copy of Meadow-Endpoint-Update.js with the `< 1` check
+		// changed to `=== 0 || !tmpIDValue` (reject zero/falsy, allow negative).
+		pMeadowEndpoints._Endpoints.Update = function(pRequest, pResponse, fNext)
+		{
+			let tmpRequestState = this.initializeRequestState(pRequest, 'Update');
+
+			this.waterfall(
+			[
+				(fStageComplete) =>
+				{
+					if (typeof(pRequest.body) !== 'object')
+					{
+						return fStageComplete(
+							this.ErrorHandler.getError('Record update failure - a valid record is required.', 400));
+					}
+					// Allow negative IDs (offline-created records) — only reject 0 and falsy
+					let tmpIDValue = pRequest.body[this.DAL.defaultIdentifier];
+					if (!tmpIDValue || tmpIDValue === 0)
+					{
+						return fStageComplete(
+							this.ErrorHandler.getError('Record update failure - a valid record ID is required in the passed-in record.', 400));
+					}
+
+					tmpRequestState.Record = pRequest.body;
+					return fStageComplete();
+				},
+				(fStageComplete) =>
+				{
+					// Pass the record as pOptionalCachedUpdatingRecord to
+					// bypass Meadow-Operation-Update's `< 1` check (line 11).
+					// That check allows negative IDs when a cached record is provided.
+					let tmpRecord = pRequest.body;
+					let tmpIDValue = tmpRecord[this.DAL.defaultIdentifier];
+					let tmpCachedRecord = (tmpIDValue < 0) ? tmpRecord : undefined;
+					tmpDoUpdateOperation.call(this, tmpRecord, pRequest, tmpRequestState, pResponse, fStageComplete, tmpCachedRecord);
+				},
+				(fStageComplete) =>
+				{
+					if (tmpRequestState.RecordUpdateError)
+					{
+						return fStageComplete(tmpRequestState.RecordUpdateErrorObject);
+					}
+					if (tmpRequestState.UpdatedRecords.length < 1)
+					{
+						return fStageComplete(
+							this.ErrorHandler.getError('Unknown record update failure - no updated records returned.', 500));
+					}
+
+					tmpRequestState.Record = tmpRequestState.UpdatedRecords[0];
+					return fStageComplete();
+				},
+				(fStageComplete) =>
+				{
+					pResponse.send(tmpRequestState.Record);
+					return fStageComplete();
+				}
+			],
+			(pError) =>
+			{
+				return this.ErrorHandler.handleErrorIfSet(pRequest, tmpRequestState, pResponse, pError, fNext);
+			});
+		};
+
+		this.log.info('MeadowProviderOffline: Patched Update endpoint to accept negative IDs.');
+	}
+
 	_addDirtyTrackingBehaviors(pEntityName, pMeadowEndpoints)
 	{
 		let tmpSelf = this;
@@ -1052,9 +1145,53 @@ class MeadowProviderOffline extends libFableServiceBase
 					// Only assign a negative ID if the record doesn't already have one
 					if (!tmpCurrentID || tmpCurrentID === 0)
 					{
-						let tmpNegID = tmpSelf.getNextNegativeID(pEntityName);
-						pRequestState.RecordToCreate[tmpIDField] = tmpNegID;
-						tmpSelf.log.info(`Assigned negative ID ${tmpNegID} to new ${pEntityName} record.`);
+						// When using NativeBridge, skip pre-assignment.
+						// The native DAL assigns its own internalIndex and
+						// translateRecordToMeadow produces the canonical
+						// negative ID as -(internalIndex).  Pre-assigning
+						// a different negative value would create a mismatch
+						// between the meadow ID and the native lookup key.
+						if (tmpSelf._nativeBridgeFunction)
+						{
+							tmpSelf.log.info(`Skipping negative ID pre-assignment for ${pEntityName} — NativeBridge will assign canonical ID.`);
+
+							// NativeBridge bypasses FoxHound's query builder, so
+							// AutoGUID columns don't get their generated UUIDs.
+							// Fill in any empty/default GUID columns here.
+							let tmpSchema = this.DAL.schemaFull.schema;
+							if (Array.isArray(tmpSchema))
+							{
+								for (let i = 0; i < tmpSchema.length; i++)
+								{
+									if (tmpSchema[i].Type === 'AutoGUID')
+									{
+										let tmpGUIDColumn = tmpSchema[i].Column;
+										let tmpCurrentGUID = pRequestState.RecordToCreate[tmpGUIDColumn];
+										if (!tmpCurrentGUID
+											|| tmpCurrentGUID === '0x0000000000000000'
+											|| tmpCurrentGUID === '00000000-0000-0000-0000-000000000000'
+											|| (typeof tmpCurrentGUID === 'string' && tmpCurrentGUID.length < 5))
+										{
+											pRequestState.RecordToCreate[tmpGUIDColumn] = tmpSelf.fable.getUUID();
+											tmpSelf.log.info(`Generated GUID for ${pEntityName}.${tmpGUIDColumn}: ${pRequestState.RecordToCreate[tmpGUIDColumn]}`);
+										}
+									}
+								}
+							}
+
+							return fBehaviorCallback();
+						}
+
+						// sql.js path: query MIN(ID) synchronously
+						tmpSelf.getNextNegativeID(pEntityName,
+							(pError, pNegID) =>
+							{
+								let tmpNegID = pNegID || -1;
+								pRequestState.RecordToCreate[tmpIDField] = tmpNegID;
+								tmpSelf.log.info(`Assigned negative ID ${tmpNegID} to new ${pEntityName} record.`);
+								return fBehaviorCallback();
+							});
+						return; // Wait for async callback
 					}
 				}
 				return fBehaviorCallback();
@@ -1068,6 +1205,12 @@ class MeadowProviderOffline extends libFableServiceBase
 			{
 				if (tmpSelf._negativeIDsEnabled && pRequestState.Query)
 				{
+					// NativeBridge: don't disable auto identity — native
+					// DAL manages its own ID assignment.
+					if (tmpSelf._nativeBridgeFunction)
+					{
+						return fBehaviorCallback();
+					}
 					pRequestState.Query.query.disableAutoIdentity = true;
 				}
 				return fBehaviorCallback();

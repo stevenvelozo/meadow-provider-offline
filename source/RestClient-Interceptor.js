@@ -942,6 +942,7 @@ class RestClientInterceptor extends libFableServiceBase
 	 * Handles URLs like:
 	 *   /1.0/Artifact/Media/{IDArtifact}/{Version}
 	 *   http://server/1.0/Artifact/Media/123/1
+	 *   /1.0/Artifact/Media/-11/1          (negative offline IDs)
 	 *
 	 * @param {string} pURL - The full or relative URL
 	 * @returns {{ entity: string, id: string|number, version: string|number }|null}
@@ -952,7 +953,8 @@ class RestClientInterceptor extends libFableServiceBase
 		let tmpPath = this._resolveURL(pURL);
 
 		// Match: /1.0/Artifact/Media/{IDArtifact}/{Version}
-		let tmpMatch = tmpPath.match(/\/1\.0\/Artifact\/Media\/(\d+)\/(\d+)/);
+		// Uses -?\d+ to support negative IDs from offline creates.
+		let tmpMatch = tmpPath.match(/\/1\.0\/Artifact\/Media\/(-?\d+)\/(\d+)/);
 		if (tmpMatch)
 		{
 			return {
@@ -963,7 +965,7 @@ class RestClientInterceptor extends libFableServiceBase
 		}
 
 		// Match: /1.0/Artifact/Media/{IDArtifact} (no version, default to 1)
-		tmpMatch = tmpPath.match(/\/1\.0\/Artifact\/Media\/(\d+)$/);
+		tmpMatch = tmpPath.match(/\/1\.0\/Artifact\/Media\/(-?\d+)$/);
 		if (tmpMatch)
 		{
 			return {
