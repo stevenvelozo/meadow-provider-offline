@@ -755,5 +755,346 @@ suite
 				);
 			}
 		);
+
+		// ==============================================================
+		// Response Error Interceptor
+		// ==============================================================
+		suite
+		(
+			'Response Error Interceptor',
+			() =>
+			{
+				test
+				(
+					'Should suppress caching when interceptor returns null',
+					function (fDone)
+					{
+						let tmpFable = new libFable(_FableConfig);
+						tmpFable.serviceManager.addServiceType('MeadowProviderOffline', libMeadowProviderOffline);
+						let tmpProvider = tmpFable.serviceManager.instantiateServiceProvider('MeadowProviderOffline', _SessionConfig);
+
+						tmpProvider.initializeAsync(
+							(pError) =>
+							{
+								Expect(pError).to.not.exist;
+
+								tmpProvider.addEntity(_BookSchema,
+									(pEntityError) =>
+									{
+										Expect(pEntityError).to.not.exist;
+										tmpProvider.enableCacheThrough();
+
+										// Register an interceptor that suppresses error responses
+										tmpProvider.restClientInterceptor.setResponseErrorInterceptor(
+											(pEntityName, pResponse, pBody) =>
+											{
+												if (pBody && pBody.Error)
+												{
+													return null;
+												}
+												return pBody;
+											});
+
+										let tmpInterceptor = tmpProvider.restClientInterceptor;
+
+										let tmpWrapped = tmpInterceptor._wrapCallbackForCacheThrough(
+											'GET', '/1.0/Book/999',
+											(pErr, pResp, pBody) =>
+											{
+												// Original callback should still fire with no error
+												Expect(pErr).to.not.exist;
+
+												// Record should NOT be cached
+												let tmpRows = tmpProvider.dataCacheManager.db.prepare('SELECT * FROM Book WHERE IDBook = 999').all();
+												Expect(tmpRows).to.have.length(0);
+												fDone();
+											});
+
+										// Simulate a 200 response with error in body
+										tmpWrapped(null, { statusCode: 200 },
+											JSON.stringify({ Error: 'Record not found', ErrorCode: 1 }));
+									});
+							});
+					}
+				);
+
+				test
+				(
+					'Should synthesize error when interceptor throws',
+					function (fDone)
+					{
+						let tmpFable = new libFable(_FableConfig);
+						tmpFable.serviceManager.addServiceType('MeadowProviderOffline', libMeadowProviderOffline);
+						let tmpProvider = tmpFable.serviceManager.instantiateServiceProvider('MeadowProviderOffline', _SessionConfig);
+
+						tmpProvider.initializeAsync(
+							(pError) =>
+							{
+								Expect(pError).to.not.exist;
+
+								tmpProvider.addEntity(_BookSchema,
+									(pEntityError) =>
+									{
+										Expect(pEntityError).to.not.exist;
+										tmpProvider.enableCacheThrough();
+
+										// Register an interceptor that throws on error responses
+										tmpProvider.restClientInterceptor.setResponseErrorInterceptor(
+											(pEntityName, pResponse, pBody) =>
+											{
+												if (pBody && pBody.Error)
+												{
+													throw new Error(pBody.Error);
+												}
+												return pBody;
+											});
+
+										let tmpInterceptor = tmpProvider.restClientInterceptor;
+
+										let tmpWrapped = tmpInterceptor._wrapCallbackForCacheThrough(
+											'GET', '/1.0/Book/999',
+											(pErr, pResp, pBody) =>
+											{
+												// Callback should receive the synthesized error
+												Expect(pErr).to.be.an.instanceof(Error);
+												Expect(pErr.message).to.equal('Record not found');
+
+												// Record should NOT be cached
+												let tmpRows = tmpProvider.dataCacheManager.db.prepare('SELECT * FROM Book WHERE IDBook = 999').all();
+												Expect(tmpRows).to.have.length(0);
+												fDone();
+											});
+
+										// Simulate a 200 response with error in body
+										tmpWrapped(null, { statusCode: 200 },
+											JSON.stringify({ Error: 'Record not found', ErrorCode: 1 }));
+									});
+							});
+					}
+				);
+
+				test
+				(
+					'Should allow caching when interceptor returns data unchanged',
+					function (fDone)
+					{
+						let tmpFable = new libFable(_FableConfig);
+						tmpFable.serviceManager.addServiceType('MeadowProviderOffline', libMeadowProviderOffline);
+						let tmpProvider = tmpFable.serviceManager.instantiateServiceProvider('MeadowProviderOffline', _SessionConfig);
+
+						tmpProvider.initializeAsync(
+							(pError) =>
+							{
+								Expect(pError).to.not.exist;
+
+								tmpProvider.addEntity(_BookSchema,
+									(pEntityError) =>
+									{
+										Expect(pEntityError).to.not.exist;
+										tmpProvider.enableCacheThrough();
+
+										// Register a pass-through interceptor
+										tmpProvider.restClientInterceptor.setResponseErrorInterceptor(
+											(pEntityName, pResponse, pBody) =>
+											{
+												return pBody;
+											});
+
+										let tmpInterceptor = tmpProvider.restClientInterceptor;
+
+										let tmpWrapped = tmpInterceptor._wrapCallbackForCacheThrough(
+											'GET', '/1.0/Book/42',
+											(pErr, pResp, pBody) =>
+											{
+												Expect(pErr).to.not.exist;
+
+												// Record SHOULD be cached
+												let tmpRows = tmpProvider.dataCacheManager.db.prepare('SELECT * FROM Book WHERE IDBook = 42').all();
+												Expect(tmpRows).to.have.length(1);
+												Expect(tmpRows[0].Title).to.equal('Valid Book');
+												fDone();
+											});
+
+										// Simulate a valid 200 response
+										tmpWrapped(null, { statusCode: 200 },
+											JSON.stringify({ IDBook: 42, GUIDBook: 'valid-guid', Title: 'Valid Book', Description: '', CreateDate: '', CreatingIDUser: 1, UpdateDate: '', UpdatingIDUser: 1, Deleted: 0, DeletingIDUser: 0, DeleteDate: '' }));
+									});
+							});
+					}
+				);
+
+				test
+				(
+					'Should allow interceptor to transform response data',
+					function (fDone)
+					{
+						let tmpFable = new libFable(_FableConfig);
+						tmpFable.serviceManager.addServiceType('MeadowProviderOffline', libMeadowProviderOffline);
+						let tmpProvider = tmpFable.serviceManager.instantiateServiceProvider('MeadowProviderOffline', _SessionConfig);
+
+						tmpProvider.initializeAsync(
+							(pError) =>
+							{
+								Expect(pError).to.not.exist;
+
+								tmpProvider.addEntity(_BookSchema,
+									(pEntityError) =>
+									{
+										Expect(pEntityError).to.not.exist;
+										tmpProvider.enableCacheThrough();
+
+										// Register an interceptor that unwraps an envelope format
+										tmpProvider.restClientInterceptor.setResponseErrorInterceptor(
+											(pEntityName, pResponse, pBody) =>
+											{
+												if (pBody && pBody.data)
+												{
+													return pBody.data;
+												}
+												return pBody;
+											});
+
+										let tmpInterceptor = tmpProvider.restClientInterceptor;
+
+										let tmpWrapped = tmpInterceptor._wrapCallbackForCacheThrough(
+											'GET', '/1.0/Book/50',
+											(pErr, pResp, pBody) =>
+											{
+												Expect(pErr).to.not.exist;
+
+												// The unwrapped record should be cached
+												let tmpRows = tmpProvider.dataCacheManager.db.prepare('SELECT * FROM Book WHERE IDBook = 50').all();
+												Expect(tmpRows).to.have.length(1);
+												Expect(tmpRows[0].Title).to.equal('Unwrapped');
+												fDone();
+											});
+
+										// Simulate a response with envelope wrapper
+										tmpWrapped(null, { statusCode: 200 },
+											JSON.stringify({
+												data: { IDBook: 50, GUIDBook: 'wrap-guid', Title: 'Unwrapped', Description: '', CreateDate: '', CreatingIDUser: 1, UpdateDate: '', UpdatingIDUser: 1, Deleted: 0, DeletingIDUser: 0, DeleteDate: '' }
+											}));
+									});
+							});
+					}
+				);
+
+				test
+				(
+					'Should not invoke interceptor for non-2xx responses',
+					function (fDone)
+					{
+						let tmpFable = new libFable(_FableConfig);
+						tmpFable.serviceManager.addServiceType('MeadowProviderOffline', libMeadowProviderOffline);
+						let tmpProvider = tmpFable.serviceManager.instantiateServiceProvider('MeadowProviderOffline', _SessionConfig);
+
+						tmpProvider.initializeAsync(
+							(pError) =>
+							{
+								Expect(pError).to.not.exist;
+
+								tmpProvider.addEntity(_BookSchema,
+									(pEntityError) =>
+									{
+										Expect(pEntityError).to.not.exist;
+										tmpProvider.enableCacheThrough();
+
+										let tmpInterceptorCalled = false;
+
+										tmpProvider.restClientInterceptor.setResponseErrorInterceptor(
+											(pEntityName, pResponse, pBody) =>
+											{
+												tmpInterceptorCalled = true;
+												return pBody;
+											});
+
+										let tmpInterceptor = tmpProvider.restClientInterceptor;
+
+										let tmpWrapped = tmpInterceptor._wrapCallbackForCacheThrough(
+											'GET', '/1.0/Book/404',
+											(pErr, pResp, pBody) =>
+											{
+												// Interceptor should NOT have been called for 404
+												Expect(tmpInterceptorCalled).to.equal(false);
+
+												// Nothing should be cached
+												let tmpRows = tmpProvider.dataCacheManager.db.prepare('SELECT * FROM Book WHERE IDBook = 404').all();
+												Expect(tmpRows).to.have.length(0);
+												fDone();
+											});
+
+										// Simulate a 404 response
+										tmpWrapped(null, { statusCode: 404 },
+											JSON.stringify({ Error: 'Not found' }));
+									});
+							});
+					}
+				);
+
+				test
+				(
+					'Should not invoke interceptor when none is registered',
+					function (fDone)
+					{
+						let tmpFable = new libFable(_FableConfig);
+						tmpFable.serviceManager.addServiceType('MeadowProviderOffline', libMeadowProviderOffline);
+						let tmpProvider = tmpFable.serviceManager.instantiateServiceProvider('MeadowProviderOffline', _SessionConfig);
+
+						tmpProvider.initializeAsync(
+							(pError) =>
+							{
+								Expect(pError).to.not.exist;
+
+								tmpProvider.addEntity(_BookSchema,
+									(pEntityError) =>
+									{
+										Expect(pEntityError).to.not.exist;
+										tmpProvider.enableCacheThrough();
+
+										// No interceptor registered — default behavior
+
+										let tmpInterceptor = tmpProvider.restClientInterceptor;
+
+										let tmpWrapped = tmpInterceptor._wrapCallbackForCacheThrough(
+											'GET', '/1.0/Book/10',
+											(pErr, pResp, pBody) =>
+											{
+												Expect(pErr).to.not.exist;
+
+												// Should cache normally without interceptor
+												let tmpRows = tmpProvider.dataCacheManager.db.prepare('SELECT * FROM Book WHERE IDBook = 10').all();
+												Expect(tmpRows).to.have.length(1);
+												Expect(tmpRows[0].Title).to.equal('No Interceptor');
+												fDone();
+											});
+
+										tmpWrapped(null, { statusCode: 200 },
+											JSON.stringify({ IDBook: 10, GUIDBook: 'no-int', Title: 'No Interceptor', Description: '', CreateDate: '', CreatingIDUser: 1, UpdateDate: '', UpdatingIDUser: 1, Deleted: 0, DeletingIDUser: 0, DeleteDate: '' }));
+									});
+							});
+					}
+				);
+
+				test
+				(
+					'Should clear interceptor with setResponseErrorInterceptor(null)',
+					function (fDone)
+					{
+						let tmpFable = new libFable(_FableConfig);
+						tmpFable.serviceManager.addServiceType('RestClientInterceptor', libRestClientInterceptor);
+						let tmpInterceptor = tmpFable.serviceManager.instantiateServiceProvider('RestClientInterceptor');
+
+						let tmpCalled = false;
+						tmpInterceptor.setResponseErrorInterceptor(() => { tmpCalled = true; return null; });
+						Expect(tmpInterceptor._responseErrorInterceptor).to.be.a('function');
+
+						tmpInterceptor.setResponseErrorInterceptor(null);
+						Expect(tmpInterceptor._responseErrorInterceptor).to.equal(null);
+
+						fDone();
+					}
+				);
+			}
+		);
 	}
 );

@@ -105,6 +105,30 @@ class RestClientInterceptor extends libFableServiceBase
 		this._cacheIngestCallback = null;
 
 		/**
+		 * Optional response error interceptor for network fallback responses.
+		 *
+		 * Some APIs return HTTP 200 with error indicators in the response
+		 * body instead of proper 4xx/5xx status codes.  This interceptor
+		 * lets callers detect those cases and synthesize, transform, or
+		 * suppress them before the response reaches the cache-through
+		 * pipeline and the original callback.
+		 *
+		 * Signature: (pEntityName, pResponse, pBody) => pBody
+		 *
+		 * The interceptor receives the parsed body and may:
+		 *   - Return the body unchanged (pass-through)
+		 *   - Return a transformed body (e.g., strip error wrapper)
+		 *   - Return null/undefined to suppress caching while still
+		 *     forwarding the original response to the caller
+		 *   - Throw an Error to convert the response into an error —
+		 *     the thrown error is forwarded to the original callback
+		 *     as the pError argument and caching is skipped
+		 *
+		 * @type {function|null}
+		 */
+		this._responseErrorInterceptor = null;
+
+		/**
 		 * Map from registered URL prefix to entity name.
 		 * Used by cache-through to identify which entity a network
 		 * fallback response belongs to.
@@ -155,6 +179,23 @@ class RestClientInterceptor extends libFableServiceBase
 	setCacheIngestCallback(fCallback)
 	{
 		this._cacheIngestCallback = (typeof fCallback === 'function') ? fCallback : null;
+	}
+
+	/**
+	 * Set a response error interceptor for network fallback responses.
+	 *
+	 * The interceptor is called after a successful HTTP response (2xx)
+	 * is received from a network fallback, but before the response is
+	 * passed to the cache-through pipeline or the original callback.
+	 *
+	 * @param {function} fInterceptor - Interceptor with signature
+	 *   (pEntityName, pResponse, pBody) => pBody.
+	 *   Return the body to cache it, null to suppress caching, or
+	 *   throw an Error to convert to an error response.
+	 */
+	setResponseErrorInterceptor(fInterceptor)
+	{
+		this._responseErrorInterceptor = (typeof fInterceptor === 'function') ? fInterceptor : null;
 	}
 
 	/**
@@ -375,7 +416,7 @@ class RestClientInterceptor extends libFableServiceBase
 
 		return function (pError, pResponse, pBody)
 		{
-			// Only cache successful responses
+			// Only process successful responses
 			if (!pError && pResponse && pResponse.statusCode >= 200 && pResponse.statusCode < 300)
 			{
 				let tmpEntityName = tmpSelf.getEntityForURL(pURL);
@@ -384,12 +425,33 @@ class RestClientInterceptor extends libFableServiceBase
 					try
 					{
 						let tmpData = (typeof pBody === 'string') ? JSON.parse(pBody) : pBody;
-						tmpSelf._cacheIngestCallback(tmpEntityName, tmpData);
-						tmpSelf.log.info(`RestClientInterceptor: Cache-through ingested ${tmpEntityName} data from network fallback.`);
+
+						// Run the response error interceptor if registered.
+						// The interceptor may return transformed data, return
+						// null to suppress caching, or throw to synthesize an
+						// error (which skips caching and forwards the error
+						// to the original callback).
+						if (tmpSelf._responseErrorInterceptor)
+						{
+							tmpData = tmpSelf._responseErrorInterceptor(tmpEntityName, pResponse, tmpData);
+						}
+
+						if (tmpData != null)
+						{
+							tmpSelf._cacheIngestCallback(tmpEntityName, tmpData);
+							tmpSelf.log.info(`RestClientInterceptor: Cache-through ingested ${tmpEntityName} data from network fallback.`);
+						}
+						else
+						{
+							tmpSelf.log.info(`RestClientInterceptor: Cache-through suppressed for ${tmpEntityName} by response error interceptor.`);
+						}
 					}
-					catch (pParseError)
+					catch (pInterceptError)
 					{
-						tmpSelf.log.warn(`RestClientInterceptor: Cache-through parse error for ${tmpEntityName}: ${pParseError.message}`);
+						// If the interceptor threw, treat this as an error
+						// response — skip caching and forward the error.
+						tmpSelf.log.warn(`RestClientInterceptor: Response error interceptor rejected ${tmpEntityName}: ${pInterceptError.message}`);
+						return fOriginalCallback(pInterceptError, pResponse, pBody);
 					}
 				}
 			}

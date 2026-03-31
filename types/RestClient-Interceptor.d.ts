@@ -69,6 +69,29 @@ declare class RestClientInterceptor extends libFableServiceBase {
      */
     _cacheIngestCallback: Function | null;
     /**
+     * Optional response error interceptor for network fallback responses.
+     *
+     * Some APIs return HTTP 200 with error indicators in the response
+     * body instead of proper 4xx/5xx status codes.  This interceptor
+     * lets callers detect those cases and synthesize, transform, or
+     * suppress them before the response reaches the cache-through
+     * pipeline and the original callback.
+     *
+     * Signature: (pEntityName, pResponse, pBody) => pBody
+     *
+     * The interceptor receives the parsed body and may:
+     *   - Return the body unchanged (pass-through)
+     *   - Return a transformed body (e.g., strip error wrapper)
+     *   - Return null/undefined to suppress caching while still
+     *     forwarding the original response to the caller
+     *   - Throw an Error to convert the response into an error —
+     *     the thrown error is forwarded to the original callback
+     *     as the pError argument and caching is skipped
+     *
+     * @type {function|null}
+     */
+    _responseErrorInterceptor: Function | null;
+    /**
      * Map from registered URL prefix to entity name.
      * Used by cache-through to identify which entity a network
      * fallback response belongs to.
@@ -100,6 +123,19 @@ declare class RestClientInterceptor extends libFableServiceBase {
      * @param {function} fCallback - Callback with signature (pEntityName, pData)
      */
     setCacheIngestCallback(fCallback: Function): void;
+    /**
+     * Set a response error interceptor for network fallback responses.
+     *
+     * The interceptor is called after a successful HTTP response (2xx)
+     * is received from a network fallback, but before the response is
+     * passed to the cache-through pipeline or the original callback.
+     *
+     * @param {function} fInterceptor - Interceptor with signature
+     *   (pEntityName, pResponse, pBody) => pBody.
+     *   Return the body to cache it, null to suppress caching, or
+     *   throw an Error to convert to an error response.
+     */
+    setResponseErrorInterceptor(fInterceptor: Function): void;
     /**
      * Look up the entity name for a URL using longest-prefix matching.
      *
