@@ -1096,5 +1096,266 @@ suite
 				);
 			}
 		);
+
+		// ==============================================================
+		// IPC Route Resolution with Overlapping Entity Names
+		// ==============================================================
+		suite
+		(
+			'IPC Route Resolution — Overlapping Entity Names',
+			() =>
+			{
+				test
+				(
+					'Should route Reads to the correct entity when names overlap (Book vs BookReview)',
+					function (fDone)
+					{
+						this.timeout(15000);
+
+						let tmpFable = new libFable(_FableConfig);
+						tmpFable.serviceManager.addServiceType('MeadowProviderOffline', libMeadowProviderOffline);
+						let tmpProvider = tmpFable.serviceManager.instantiateServiceProvider('MeadowProviderOffline', _SessionConfig);
+
+						tmpProvider.initializeAsync(
+							(pError) =>
+							{
+								Expect(pError).to.not.exist;
+
+								tmpProvider.addEntity(_BookSchema,
+									(pBookError) =>
+									{
+										Expect(pBookError).to.not.exist;
+
+										tmpProvider.addEntity(_BookReviewSchema,
+											(pReviewError) =>
+											{
+												Expect(pReviewError).to.not.exist;
+
+												// Seed data into both tables
+												tmpProvider.seedEntity('Book',
+												[
+													{ IDBook: 1, GUIDBook: 'b1', Title: 'Book One', Description: '', CreateDate: '', CreatingIDUser: 1, UpdateDate: '', UpdatingIDUser: 1, Deleted: 0, DeletingIDUser: 0, DeleteDate: '' }
+												]);
+												tmpProvider.seedEntity('BookReview',
+												[
+													{ IDBookReview: 10, GUIDBookReview: 'br1', IDBook: 1, Rating: 5, CreateDate: '', CreatingIDUser: 1, UpdateDate: '', UpdatingIDUser: 1, Deleted: 0, DeletingIDUser: 0, DeleteDate: '' }
+												]);
+
+												let tmpMockRestClient =
+												{
+													preRequest: (pOptions) => pOptions,
+													executeJSONRequest: (pOptions, fCallback) =>
+													{
+														// Should NOT be called — IPC should handle
+														fCallback(new Error('Unexpected network fallback for: ' + pOptions.url));
+													},
+													executeChunkedRequest: (pOptions, fCallback) =>
+													{
+														fCallback(null, { statusCode: 200 }, '');
+													}
+												};
+
+												tmpProvider.connect(tmpMockRestClient);
+
+												// Request Books (plural: /1.0/Books/0/10)
+												tmpMockRestClient.executeJSONRequest(
+													{ url: '/1.0/Books/0/10', method: 'GET' },
+													(pErr, pResp, pBody) =>
+													{
+														Expect(pErr).to.not.exist;
+														let tmpBooks = (typeof pBody === 'string') ? JSON.parse(pBody) : pBody;
+														Expect(tmpBooks).to.be.an('array');
+														Expect(tmpBooks).to.have.length(1);
+														Expect(tmpBooks[0].Title).to.equal('Book One');
+
+														// Request BookReviews (plural: /1.0/BookReviews/0/10)
+														tmpMockRestClient.executeJSONRequest(
+															{ url: '/1.0/BookReviews/0/10', method: 'GET' },
+															(pErr2, pResp2, pBody2) =>
+															{
+																Expect(pErr2).to.not.exist;
+																let tmpReviews = (typeof pBody2 === 'string') ? JSON.parse(pBody2) : pBody2;
+																Expect(tmpReviews).to.be.an('array');
+																Expect(tmpReviews).to.have.length(1);
+																Expect(tmpReviews[0].Rating).to.equal(5);
+
+																tmpProvider.disconnect(tmpMockRestClient);
+																fDone();
+															});
+													});
+											});
+									});
+							});
+					}
+				);
+
+				test
+				(
+					'Should route Count to the correct entity when names overlap',
+					function (fDone)
+					{
+						this.timeout(15000);
+
+						let tmpFable = new libFable(_FableConfig);
+						tmpFable.serviceManager.addServiceType('MeadowProviderOffline', libMeadowProviderOffline);
+						let tmpProvider = tmpFable.serviceManager.instantiateServiceProvider('MeadowProviderOffline', _SessionConfig);
+
+						tmpProvider.initializeAsync(
+							(pError) =>
+							{
+								Expect(pError).to.not.exist;
+
+								tmpProvider.addEntity(_BookSchema,
+									(pBookError) =>
+									{
+										Expect(pBookError).to.not.exist;
+
+										tmpProvider.addEntity(_BookReviewSchema,
+											(pReviewError) =>
+											{
+												Expect(pReviewError).to.not.exist;
+
+												// Seed data
+												tmpProvider.seedEntity('Book',
+												[
+													{ IDBook: 1, GUIDBook: 'b1', Title: 'A', Description: '', CreateDate: '', CreatingIDUser: 1, UpdateDate: '', UpdatingIDUser: 1, Deleted: 0, DeletingIDUser: 0, DeleteDate: '' },
+													{ IDBook: 2, GUIDBook: 'b2', Title: 'B', Description: '', CreateDate: '', CreatingIDUser: 1, UpdateDate: '', UpdatingIDUser: 1, Deleted: 0, DeletingIDUser: 0, DeleteDate: '' }
+												]);
+												tmpProvider.seedEntity('BookReview',
+												[
+													{ IDBookReview: 10, GUIDBookReview: 'br1', IDBook: 1, Rating: 5, CreateDate: '', CreatingIDUser: 1, UpdateDate: '', UpdatingIDUser: 1, Deleted: 0, DeletingIDUser: 0, DeleteDate: '' }
+												]);
+
+												let tmpMockRestClient =
+												{
+													preRequest: (pOptions) => pOptions,
+													executeJSONRequest: (pOptions, fCallback) =>
+													{
+														fCallback(new Error('Unexpected network fallback for: ' + pOptions.url));
+													},
+													executeChunkedRequest: (pOptions, fCallback) =>
+													{
+														fCallback(null, { statusCode: 200 }, '');
+													}
+												};
+
+												tmpProvider.connect(tmpMockRestClient);
+
+												// Count Books
+												tmpMockRestClient.executeJSONRequest(
+													{ url: '/1.0/Books/Count', method: 'GET' },
+													(pErr, pResp, pBody) =>
+													{
+														Expect(pErr).to.not.exist;
+														let tmpCount = (typeof pBody === 'string') ? JSON.parse(pBody) : pBody;
+														// IPC returns { Count: N } not a raw number
+														Expect(tmpCount).to.be.an('object');
+														Expect(tmpCount.Count).to.equal(2);
+
+														// Count BookReviews
+														tmpMockRestClient.executeJSONRequest(
+															{ url: '/1.0/BookReviews/Count', method: 'GET' },
+															(pErr2, pResp2, pBody2) =>
+															{
+																Expect(pErr2).to.not.exist;
+																let tmpCount2 = (typeof pBody2 === 'string') ? JSON.parse(pBody2) : pBody2;
+																Expect(tmpCount2).to.be.an('object');
+																Expect(tmpCount2.Count).to.equal(1);
+
+																tmpProvider.disconnect(tmpMockRestClient);
+																fDone();
+															});
+													});
+											});
+									});
+							});
+					}
+				);
+
+				test
+				(
+					'Should route FilteredTo reads to the correct entity when names overlap',
+					function (fDone)
+					{
+						this.timeout(15000);
+
+						let tmpFable = new libFable(_FableConfig);
+						tmpFable.serviceManager.addServiceType('MeadowProviderOffline', libMeadowProviderOffline);
+						let tmpProvider = tmpFable.serviceManager.instantiateServiceProvider('MeadowProviderOffline', _SessionConfig);
+
+						tmpProvider.initializeAsync(
+							(pError) =>
+							{
+								Expect(pError).to.not.exist;
+
+								tmpProvider.addEntity(_BookSchema,
+									(pBookError) =>
+									{
+										Expect(pBookError).to.not.exist;
+
+										tmpProvider.addEntity(_BookReviewSchema,
+											(pReviewError) =>
+											{
+												Expect(pReviewError).to.not.exist;
+
+												// Seed data
+												tmpProvider.seedEntity('Book',
+												[
+													{ IDBook: 1, GUIDBook: 'b1', Title: 'Alpha', Description: '', CreateDate: '', CreatingIDUser: 1, UpdateDate: '', UpdatingIDUser: 1, Deleted: 0, DeletingIDUser: 0, DeleteDate: '' },
+													{ IDBook: 2, GUIDBook: 'b2', Title: 'Beta', Description: '', CreateDate: '', CreatingIDUser: 1, UpdateDate: '', UpdatingIDUser: 1, Deleted: 0, DeletingIDUser: 0, DeleteDate: '' }
+												]);
+												tmpProvider.seedEntity('BookReview',
+												[
+													{ IDBookReview: 10, GUIDBookReview: 'br1', IDBook: 1, Rating: 5, CreateDate: '', CreatingIDUser: 1, UpdateDate: '', UpdatingIDUser: 1, Deleted: 0, DeletingIDUser: 0, DeleteDate: '' },
+													{ IDBookReview: 11, GUIDBookReview: 'br2', IDBook: 2, Rating: 3, CreateDate: '', CreatingIDUser: 1, UpdateDate: '', UpdatingIDUser: 1, Deleted: 0, DeletingIDUser: 0, DeleteDate: '' }
+												]);
+
+												let tmpMockRestClient =
+												{
+													preRequest: (pOptions) => pOptions,
+													executeJSONRequest: (pOptions, fCallback) =>
+													{
+														fCallback(new Error('Unexpected network fallback for: ' + pOptions.url));
+													},
+													executeChunkedRequest: (pOptions, fCallback) =>
+													{
+														fCallback(null, { statusCode: 200 }, '');
+													}
+												};
+
+												tmpProvider.connect(tmpMockRestClient);
+
+												// FilteredTo on BookReviews (should NOT match Book)
+												tmpMockRestClient.executeJSONRequest(
+													{ url: '/1.0/BookReviews/FilteredTo/FBV~Rating~EQ~5/0/10', method: 'GET' },
+													(pErr, pResp, pBody) =>
+													{
+														Expect(pErr).to.not.exist;
+														let tmpReviews = (typeof pBody === 'string') ? JSON.parse(pBody) : pBody;
+														Expect(tmpReviews).to.be.an('array');
+														Expect(tmpReviews).to.have.length(1);
+														Expect(tmpReviews[0].IDBookReview).to.equal(10);
+
+														// Count/FilteredTo on BookReviews
+														tmpMockRestClient.executeJSONRequest(
+															{ url: '/1.0/BookReviews/Count/FilteredTo/FBV~Rating~EQ~5', method: 'GET' },
+															(pErr2, pResp2, pBody2) =>
+															{
+																Expect(pErr2).to.not.exist;
+																let tmpCount = (typeof pBody2 === 'string') ? JSON.parse(pBody2) : pBody2;
+																Expect(tmpCount).to.be.an('object');
+																Expect(tmpCount.Count).to.equal(1);
+
+																tmpProvider.disconnect(tmpMockRestClient);
+																fDone();
+															});
+													});
+											});
+									});
+							});
+					}
+				);
+			}
+		);
 	}
 );
