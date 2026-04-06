@@ -102,8 +102,18 @@ class IPCOratorManager extends libFableServiceBase
 			return fCallback();
 		}
 
-		// Create Orator — auto-selects IPC mode in browser
-		this._Orator = new libOrator(this.fable, {});
+		// Create Orator — auto-selects IPC mode in browser.
+		// Set maxParamLength high to handle long filter strings in meadow
+		// REST URLs (e.g., FBL~IDEntity~INN~1,2,3,...,600).  The default
+		// find-my-way limit of 100 characters silently rejects routes
+		// when the :Filter parameter exceeds it.
+		this._Orator = new libOrator(this.fable,
+			{
+				ServiceServerOptions:
+				{
+					maxParamLength: 100000,
+				},
+			});
 
 		this._Orator.initialize(
 			() =>
