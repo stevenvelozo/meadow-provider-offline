@@ -1,4 +1,4 @@
-# Meadow Provider Offline <small>1</small>
+# Meadow Provider Offline
 
 > Offline-capable Meadow provider with browser-side SQLite and transparent RestClient interception
 
