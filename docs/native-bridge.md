@@ -1,20 +1,20 @@
 # Native Bridge
 
-For applications running inside a native host (iOS WKWebView, Android WebView, Electron, Tauri), the browser `sql.js` WASM bundle is usually unnecessary overhead. The host already has SQLite — the webview just needs a way to send queries to it. The **Native Bridge** replaces `DataCacheManager` / `sql.js` entirely with a user-supplied function that routes queries through the host.
+For applications running inside a native host (iOS WKWebView, Android WebView, Electron, Tauri), the browser `sql.js` WASM bundle is usually unnecessary overhead. The host already has SQLite -- the webview just needs a way to send queries to it. The **Native Bridge** replaces `DataCacheManager` / `sql.js` entirely with a user-supplied function that routes queries through the host.
 
 The result: no WASM load, no duplicate database, single-threaded performance replaced by the host's native SQLite implementation.
 
 ## When to Use It
 
-- **iOS apps** using WKWebView — `sql.js` works but IndexedDB has historically been unreliable for blob persistence; a native bridge sidesteps both issues
-- **Android apps** using WebView — same story
+- **iOS apps** using WKWebView -- `sql.js` works but IndexedDB has historically been unreliable for blob persistence; a native bridge sidesteps both issues
+- **Android apps** using WebView -- same story
 - **Electron** or **Tauri** apps where you already have `better-sqlite3` or `rusqlite` on the Node / Rust side
-- **Testing** — a mock bridge can return canned responses without touching real SQLite
+- **Testing** -- a mock bridge can return canned responses without touching real SQLite
 
 ## When NOT to Use It
 
-- Pure browser apps with no native host — use the default `sql.js` path
-- Apps where you want the offline database to survive across sessions in a single portable format — `sql.js` lets you export the whole database as a `Uint8Array`; the native bridge by definition lives in the host
+- Pure browser apps with no native host -- use the default `sql.js` path
+- Apps where you want the offline database to survive across sessions in a single portable format -- `sql.js` lets you export the whole database as a `Uint8Array`; the native bridge by definition lives in the host
 
 ## Bridge Function Signature
 
@@ -23,13 +23,13 @@ A bridge function has this shape:
 ```javascript
 /**
  * @param {object} pQueryInfo
- *   @property {string} sql — The SQL statement with named parameters
- *   @property {object} parameters — Named parameter bindings
- *   @property {string} operation — 'Create' | 'Read' | 'Update' | 'Delete' | 'Count' | ...
+ *   @property {string} sql -- The SQL statement with named parameters
+ *   @property {object} parameters -- Named parameter bindings
+ *   @property {string} operation -- 'Create' | 'Read' | 'Update' | 'Delete' | 'Count' | ...
  * @param {function(pError, pResult)} fCallback
- *   @property {Array} pResult.rows — Array of row objects
- *   @property {number} pResult.lastInsertRowid — For INSERT operations
- *   @property {number} pResult.changes — For UPDATE / DELETE operations
+ *   @property {Array} pResult.rows -- Array of row objects
+ *   @property {number} pResult.lastInsertRowid -- For INSERT operations
+ *   @property {number} pResult.changes -- For UPDATE / DELETE operations
  */
 function nativeBridge(pQueryInfo, fCallback)
 {
@@ -39,7 +39,7 @@ function nativeBridge(pQueryInfo, fCallback)
 }
 ```
 
-The provider passes this function every SQL query — on every Create, Read, Update, Delete, and Count that flows through an intercepted endpoint.
+The provider passes this function every SQL query -- on every Create, Read, Update, Delete, and Count that flows through an intercepted endpoint.
 
 ## Installation
 
@@ -62,7 +62,7 @@ tmpOffline.setNativeBridge(myNativeBridgeFunction);
 
 tmpOffline.initializeAsync((pError) =>
 {
-    // DataCacheManager was NOT initialized — sql.js skipped entirely
+    // DataCacheManager was NOT initialized -- sql.js skipped entirely
     // All queries will route through myNativeBridgeFunction
     if (pError) throw pError;
 
@@ -211,7 +211,7 @@ function electronSQLiteBridge(pQueryInfo, fCallback)
 tmpOffline.setNativeBridge(electronSQLiteBridge);
 ```
 
-Synchronous bridges are fine — the provider's callback-based API works with both sync and async execution models.
+Synchronous bridges are fine -- the provider's callback-based API works with both sync and async execution models.
 
 ## Example: Test Fake
 
@@ -248,13 +248,13 @@ tmpOffline.setNativeBridge(createFakeBridge());
 
 | Feature | Native Bridge Behavior |
 |---------|------------------------|
-| `addEntity()` | Skips `createTable` — the native host is expected to manage the schema |
-| `seedEntity()` | No-op — native host owns the data |
-| `injectRecords()` | No-op — alias for seedEntity |
-| `enableCacheThrough()` | Works — ingestion sends a special `__INGEST_RECORDS__` operation to the bridge |
-| `enableNegativeIDs()` | Works — `getNextNegativeID` queries MIN(ID) via the bridge asynchronously |
-| `remapID()` | **Not supported** in native bridge mode — the native host must handle remapping itself |
-| Binary / Blob storage | Independent — use `setStorageDelegate()` on BlobStoreManager to bridge blob storage too |
+| `addEntity()` | Skips `createTable` -- the native host is expected to manage the schema |
+| `seedEntity()` | No-op -- native host owns the data |
+| `injectRecords()` | No-op -- alias for seedEntity |
+| `enableCacheThrough()` | Works -- ingestion sends a special `__INGEST_RECORDS__` operation to the bridge |
+| `enableNegativeIDs()` | Works -- `getNextNegativeID` queries MIN(ID) via the bridge asynchronously |
+| `remapID()` | **Not supported** in native bridge mode -- the native host must handle remapping itself |
+| Binary / Blob storage | Independent -- use `setStorageDelegate()` on BlobStoreManager to bridge blob storage too |
 
 ## Setting a Blob Storage Delegate Alongside
 

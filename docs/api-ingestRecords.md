@@ -29,8 +29,8 @@ Use `seedTable` when you have a complete snapshot of the data and want local to 
 ```javascript
 tmpOffline.dataCacheManager.ingestRecords('Book',
     [
-        { IDBook: 1, Title: 'Updated Title One' },  // already exists — UPDATE
-        { IDBook: 42, Title: 'Brand New' }           // doesn't exist — INSERT
+        { IDBook: 1, Title: 'Updated Title One' },  // already exists -- UPDATE
+        { IDBook: 42, Title: 'Brand New' }           // doesn't exist -- INSERT
     ]);
 ```
 
@@ -80,7 +80,7 @@ function pullUpdatesSince(pOffline, pRestClient, pEntityName, pSince)
             return;
         }
 
-        // Upsert — this preserves records we already have
+        // Upsert -- this preserves records we already have
         pOffline.dataCacheManager.ingestRecords(pEntityName, pRecords);
 
         pOffline.connect();
@@ -116,6 +116,6 @@ Otherwise you risk clobbering an unsynced local edit with stale server data.
 
 ## Related
 
-- [seedTable](api-seedTable.md) — the clear-and-insert variant
-- [enableCacheThrough](api-enableCacheThrough.md) — uses this method internally
-- [seedEntity](api-seedEntity.md) — the provider-level wrapper around `seedTable`
+- [seedTable](api-seedTable.md) -- the clear-and-insert variant
+- [enableCacheThrough](api-enableCacheThrough.md) -- uses this method internally
+- [seedEntity](api-seedEntity.md) -- the provider-level wrapper around `seedTable`

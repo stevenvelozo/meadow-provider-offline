@@ -152,7 +152,7 @@ Binary storage for offline media. Accessed via `provider.blobStore`.
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `degraded` | boolean | True if running in no-op mode (no IndexedDB, no delegate — e.g., Node.js test environment) |
+| `degraded` | boolean | True if running in no-op mode (no IndexedDB, no delegate -- e.g., Node.js test environment) |
 
 ## Typical Usage Flow
 
@@ -180,11 +180,11 @@ flowchart LR
     style H fill:#e1f5fe
 ```
 
-The orange box is where your application code lives — after `connect()`, every intercepted call is transparently routed through SQLite. The blue box is the sync flow, which you trigger when connectivity is restored.
+The orange box is where your application code lives -- after `connect()`, every intercepted call is transparently routed through SQLite. The blue box is the sync flow, which you trigger when connectivity is restored.
 
 ## Error Handling
 
-Most async methods take a Node-style callback with `(pError)` or `(pError, pResult)` signatures. Synchronous methods return primitives (booleans, arrays, objects) and log errors via `this.log.error(...)`. Property accessors return `undefined` for missing entities — always check before dereferencing:
+Most async methods take a Node-style callback with `(pError)` or `(pError, pResult)` signatures. Synchronous methods return primitives (booleans, arrays, objects) and log errors via `this.log.error(...)`. Property accessors return `undefined` for missing entities -- always check before dereferencing:
 
 ```javascript
 let tmpEntity = tmpOffline.getEntity('NonExistent');

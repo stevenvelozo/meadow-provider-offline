@@ -90,13 +90,13 @@ fetch('/some/image.jpg').then((pResponse) =>
 
 The provider's binary interception layer uses keys of the form `<EntityType>:<ID>:v<Version>`. For example:
 
-- `Artifact:3:v1` — version 1 of Artifact 3
-- `Image:42:v1` — version 1 of Image 42
-- `Artifact:3:v2` — version 2 of Artifact 3 (after an edit)
+- `Artifact:3:v1` -- version 1 of Artifact 3
+- `Image:42:v1` -- version 1 of Image 42
+- `Artifact:3:v2` -- version 2 of Artifact 3 (after an edit)
 
 This format makes it easy to `listBlobs('Artifact:3:')` and see all versions of a specific artifact.
 
-If you're using the blob store outside the interception layer, you can use any key format you want — the store itself doesn't enforce the convention. It just needs to be a unique string.
+If you're using the blob store outside the interception layer, you can use any key format you want -- the store itself doesn't enforce the convention. It just needs to be a unique string.
 
 ## Degraded Mode
 
@@ -107,7 +107,7 @@ You can detect degraded mode via `tmpOffline.blobStore.degraded`:
 ```javascript
 if (tmpOffline.blobStore.degraded)
 {
-    console.warn('Blob store is degraded — calls are no-ops');
+    console.warn('Blob store is degraded -- calls are no-ops');
 }
 ```
 
@@ -117,7 +117,7 @@ If a storage delegate was set via `setStorageDelegate()`, `storeBlob` forwards t
 
 ## Dirty Tracking Side Effect
 
-When the blob store is called via the provider's binary interception (`postBinary`), the provider also calls `dirtyTracker.trackBinaryMutation(entity, id, key, mimeType)` to record the mutation. When you call `storeBlob` directly, the dirty tracker is **not** updated automatically — add the call yourself if you need sync tracking:
+When the blob store is called via the provider's binary interception (`postBinary`), the provider also calls `dirtyTracker.trackBinaryMutation(entity, id, key, mimeType)` to record the mutation. When you call `storeBlob` directly, the dirty tracker is **not** updated automatically -- add the call yourself if you need sync tracking:
 
 ```javascript
 tmpOffline.blobStore.storeBlob(tmpKey, tmpFile, tmpMetadata, (pError) =>
@@ -129,8 +129,8 @@ tmpOffline.blobStore.storeBlob(tmpKey, tmpFile, tmpMetadata, (pError) =>
 
 ## Related
 
-- [getBlob](api-getBlob.md) — retrieve a stored blob
-- [getBlobURL](api-getBlobURL.md) — get an Object URL for use in `<img>`/`<video>` tags
-- [deleteBlob](api-deleteBlob.md) — remove a blob
-- [setStorageDelegate](api-setStorageDelegate.md) — plug in native blob storage
-- [trackBinaryMutation](api-trackBinaryMutation.md) — record the mutation for sync
+- [getBlob](api-getBlob.md) -- retrieve a stored blob
+- [getBlobURL](api-getBlobURL.md) -- get an Object URL for use in `<img>`/`<video>` tags
+- [deleteBlob](api-deleteBlob.md) -- remove a blob
+- [setStorageDelegate](api-setStorageDelegate.md) -- plug in native blob storage
+- [trackBinaryMutation](api-trackBinaryMutation.md) -- record the mutation for sync

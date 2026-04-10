@@ -2,16 +2,16 @@
 
 Read the dirty record log. Three related methods:
 
-- `getDirtyMutations()` — all pending mutations as an array
-- `getDirtyCount()` — count only, no array allocation
-- `getDirtyMutationsForEntity(pEntity)` — mutations for a single entity
+- `getDirtyMutations()` -- all pending mutations as an array
+- `getDirtyCount()` -- count only, no array allocation
+- `getDirtyMutationsForEntity(pEntity)` -- mutations for a single entity
 
 ## Signatures
 
 ```javascript
-tracker.getDirtyMutations()                        // → DirtyMutation[]
-tracker.getDirtyCount()                            // → number
-tracker.getDirtyMutationsForEntity(pEntity)        // → DirtyMutation[]
+tracker.getDirtyMutations()                        // -> DirtyMutation[]
+tracker.getDirtyCount()                            // -> number
+tracker.getDirtyMutationsForEntity(pEntity)        // -> DirtyMutation[]
 ```
 
 All three are synchronous and free of side effects.
@@ -30,7 +30,7 @@ All three are synchronous and free of side effects.
 }
 ```
 
-The returned array is a shallow copy of the internal log (via `.slice()`). Mutating the array you receive does not affect the tracker's internal state — though mutating the `record` objects inside it would, because they're references to the internal deep-clones. Treat the output as read-only.
+The returned array is a shallow copy of the internal log (via `.slice()`). Mutating the array you receive does not affect the tracker's internal state -- though mutating the `record` objects inside it would, because they're references to the internal deep-clones. Treat the output as read-only.
 
 ## Code Example: Iterate and Sync
 
@@ -119,7 +119,7 @@ console.log(buildSyncStatus(tmpOffline));
 
 ## Ordering
 
-Mutations are stored in insertion order (coalesced). When `trackMutation` replaces or removes entries, the rest of the array is shifted — so the order you read them in is not strictly "oldest first" after coalescing has happened. If you need strict timestamp ordering, sort by `timestamp` yourself:
+Mutations are stored in insertion order (coalesced). When `trackMutation` replaces or removes entries, the rest of the array is shifted -- so the order you read them in is not strictly "oldest first" after coalescing has happened. If you need strict timestamp ordering, sort by `timestamp` yourself:
 
 ```javascript
 let tmpSorted = tmpOffline.dirtyTracker.getDirtyMutations()
@@ -129,7 +129,7 @@ let tmpSorted = tmpOffline.dirtyTracker.getDirtyMutations()
 
 ## Related
 
-- [trackMutation](api-trackMutation.md) — adds entries to the log
-- [clearMutation](api-clearMutation.md) — removes entries after sync
-- [hasDirtyRecords](api-hasDirtyRecords.md) — cheap boolean check
-- [Sync Strategies](sync-strategies.md) — replay patterns
+- [trackMutation](api-trackMutation.md) -- adds entries to the log
+- [clearMutation](api-clearMutation.md) -- removes entries after sync
+- [hasDirtyRecords](api-hasDirtyRecords.md) -- cheap boolean check
+- [Sync Strategies](sync-strategies.md) -- replay patterns

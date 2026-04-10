@@ -1,6 +1,6 @@
 # Core Concepts
 
-The Meadow Provider Offline vocabulary is small. Once you understand these six terms — Provider, Entity, Interception, Dirty Record, Cache-Through, and Blob — everything else in the API reference reads directly.
+The Meadow Provider Offline vocabulary is small. Once you understand these six terms -- Provider, Entity, Interception, Dirty Record, Cache-Through, and Blob -- everything else in the API reference reads directly.
 
 ## Provider
 
@@ -9,7 +9,7 @@ The **Provider** is the `MeadowProviderOffline` instance itself. It's a Fable se
 You create one provider per Fable instance, register it with the service manager, and call `initializeAsync()` before any other method. The provider's lifecycle is:
 
 ```
-instantiate → initializeAsync → addEntity(s) → connect → use → disconnect
+instantiate -> initializeAsync -> addEntity(s) -> connect -> use -> disconnect
 ```
 
 ## Entity
@@ -32,7 +32,7 @@ See [Entity Schema](entity-schema.md) for the full meadow package schema format.
 
 The critical design point: interception is **additive and reversible**. The wrapper closes over a reference to the original function. When a request comes in, the wrapper checks the URL; if it matches, it handles the request locally; if it doesn't, it forwards to the original. Calling `disconnect()` restores the original reference and the RestClient behaves exactly as it did before.
 
-URLs are matched by prefix, not by full match. A single entity registration (e.g., `/1.0/Books`) intercepts every request that starts with that prefix — the list endpoint, single-record endpoints, count endpoints, filtered list endpoints, etc.
+URLs are matched by prefix, not by full match. A single entity registration (e.g., `/1.0/Books`) intercepts every request that starts with that prefix -- the list endpoint, single-record endpoints, count endpoints, filtered list endpoints, etc.
 
 ### URL Normalisation
 
@@ -79,9 +79,9 @@ Cache-through is what lets you transition gradually from "online app" to "offlin
 
 ## Blob
 
-A **Blob** is binary data (image, video, file, arbitrary byte stream) stored in `BlobStoreManager`. Blobs live outside the SQLite table — SQLite stores row data plus a key reference to the blob, and the blob itself lives in IndexedDB (or the delegate).
+A **Blob** is binary data (image, video, file, arbitrary byte stream) stored in `BlobStoreManager`. Blobs live outside the SQLite table -- SQLite stores row data plus a key reference to the blob, and the blob itself lives in IndexedDB (or the delegate).
 
-Blob keys follow the format `<EntityType>:<ID>:v<Version>` — for example `Artifact:3:v1`. This naming convention lets you look up "all binary versions of artifact 3" by prefix.
+Blob keys follow the format `<EntityType>:<ID>:v<Version>` -- for example `Artifact:3:v1`. This naming convention lets you look up "all binary versions of artifact 3" by prefix.
 
 The provider intercepts binary calls (`postBinary`, `getBinaryBlob`, etc.) in the same way it intercepts JSON calls. When you upload an image offline, it goes into the blob store and a binary mutation is tracked in the dirty tracker. When you download an image offline, the blob is retrieved from storage and handed back as if it came from the network.
 
@@ -96,7 +96,7 @@ When cache-through enables negative IDs (`provider.enableNegativeIDs()`), the pr
 ```
 ┌──────────────────────────────────────────────────────────┐
 │                    Application                          │
-│   (Pict views, models, controllers — unchanged)         │
+│   (Pict views, models, controllers -- unchanged)         │
 └────────────────────────┬─────────────────────────────────┘
                          │ RestClient.getJSON / putJSON / ...
                          ▼
@@ -114,7 +114,7 @@ When cache-through enables negative IDs (`provider.enableNegativeIDs()`), the pr
           ▼                             ▼
   ┌──────────────┐              ┌──────────────┐
   │  IPC Orator  │              │   Original   │
-  │   + meadow   │              │ RestClient → │
+  │   + meadow   │              │ RestClient -> │
   │   endpoints  │              │     HTTP      │
   └──────┬───────┘              └──────────────┘
          │

@@ -57,7 +57,7 @@ tmpOffline.blobStore.getBlob('Artifact:3:v1', (pError, pEntry) =>
 
 ## Code Example: Use as an `<img>` Source
 
-For rendering in an image tag, `getBlobURL` is simpler — see [getBlobURL](api-getBlobURL.md). But you can also do it manually with `URL.createObjectURL`:
+For rendering in an image tag, `getBlobURL` is simpler -- see [getBlobURL](api-getBlobURL.md). But you can also do it manually with `URL.createObjectURL`:
 
 ```javascript
 tmpOffline.blobStore.getBlob('Artifact:3:v1', (pError, pEntry) =>
@@ -119,7 +119,7 @@ function syncOneBinary(pOffline, pRestClient, pBinaryMutation, fCallback)
 
 ## Not Found Behavior
 
-If the key doesn't exist in storage, `getBlob` calls back with `(null, null)` — no error, null result. Always check the result before dereferencing:
+If the key doesn't exist in storage, `getBlob` calls back with `(null, null)` -- no error, null result. Always check the result before dereferencing:
 
 ```javascript
 tmpOffline.blobStore.getBlob('NonExistent:1:v1', (pError, pEntry) =>
@@ -137,7 +137,7 @@ In degraded mode (no IndexedDB, no delegate), `getBlob` always calls back with `
 
 ## Related
 
-- [storeBlob](api-storeBlob.md) — the counterpart that puts data in
-- [getBlobURL](api-getBlobURL.md) — get an Object URL directly without manual handling
-- [deleteBlob](api-deleteBlob.md) — remove a stored blob
+- [storeBlob](api-storeBlob.md) -- the counterpart that puts data in
+- [getBlobURL](api-getBlobURL.md) -- get an Object URL directly without manual handling
+- [deleteBlob](api-deleteBlob.md) -- remove a stored blob
 - [Architecture § Binary / Blob Lifecycle](architecture.md#binary--blob-lifecycle)

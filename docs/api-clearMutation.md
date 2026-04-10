@@ -2,9 +2,9 @@
 
 Remove mutations from the dirty record log after they've been successfully synced.
 
-- `clearMutation(pEntity, pID)` — clear a single mutation
-- `clearEntity(pEntity)` — clear all mutations for an entity
-- `clearAll()` — see [clearAll](api-clearAll.md)
+- `clearMutation(pEntity, pID)` -- clear a single mutation
+- `clearEntity(pEntity)` -- clear all mutations for an entity
+- `clearAll()` -- see [clearAll](api-clearAll.md)
 
 ## Signatures
 
@@ -39,7 +39,7 @@ function syncOneMutation(pOffline, pRestClient, pMutation, fCallback)
                 return fCallback(pError);
             }
 
-            // Success — clear the mutation
+            // Success -- clear the mutation
             pOffline.dirtyTracker.clearMutation(pMutation.entity, pMutation.id);
 
             return fCallback();
@@ -61,7 +61,7 @@ function refreshBookEntity(pOffline, pRestClient, fCallback)
         // Replace local cache with fresh server data
         pOffline.seedEntity('Book', pBooks, () =>
         {
-            // Any local mutations are no longer valid — clear them
+            // Any local mutations are no longer valid -- clear them
             pOffline.dirtyTracker.clearEntity('Book');
             return fCallback();
         });
@@ -71,7 +71,7 @@ function refreshBookEntity(pOffline, pRestClient, fCallback)
 
 ## Code Example: Tolerating Failures
 
-If a sync call fails, do **not** clear the mutation — leave it in the log for the next retry:
+If a sync call fails, do **not** clear the mutation -- leave it in the log for the next retry:
 
 ```javascript
 pRestClient.putJSON(`/1.0/${pMutation.entity}`, pMutation.record,
@@ -79,7 +79,7 @@ pRestClient.putJSON(`/1.0/${pMutation.entity}`, pMutation.record,
     {
         if (pError)
         {
-            // Don't clear — try again next time
+            // Don't clear -- try again next time
             console.error('Sync failed, will retry:', pError);
             return;
         }
@@ -112,16 +112,16 @@ Both `clearMutation` and `clearEntity` trigger a rebuild of the internal `_dirty
 If the mutation you're trying to clear doesn't exist, both methods are silent no-ops:
 
 ```javascript
-tmpOffline.dirtyTracker.clearMutation('Book', 99999); // ← doesn't exist
+tmpOffline.dirtyTracker.clearMutation('Book', 99999); // <- doesn't exist
 // No error, no warning, just does nothing
 ```
 
-This is deliberate — sync logic is often defensive, and double-clearing shouldn't cause errors.
+This is deliberate -- sync logic is often defensive, and double-clearing shouldn't cause errors.
 
 ## Related
 
-- [trackMutation](api-trackMutation.md) — the inverse operation
-- [getDirtyMutations](api-getDirtyMutations.md) — inspect what's in the log
-- [clearAll](api-clearAll.md) — clear everything including binary mutations
-- [hasDirtyRecords](api-hasDirtyRecords.md) — check if the log is empty
-- [Sync Strategies § The Basic Sync Pattern](sync-strategies.md#the-basic-sync-pattern) — full replay loop
+- [trackMutation](api-trackMutation.md) -- the inverse operation
+- [getDirtyMutations](api-getDirtyMutations.md) -- inspect what's in the log
+- [clearAll](api-clearAll.md) -- clear everything including binary mutations
+- [hasDirtyRecords](api-hasDirtyRecords.md) -- check if the log is empty
+- [Sync Strategies § The Basic Sync Pattern](sync-strategies.md#the-basic-sync-pattern) -- full replay loop

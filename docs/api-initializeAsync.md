@@ -19,8 +19,8 @@ initializeAsync(fCallback)
 1. If no native bridge is set: instantiates `DataCacheManager` and opens an in-memory SQLite database via `sql.js`
 2. Instantiates `IPCOratorManager` and starts an in-process Orator IPC server with meadow-endpoints wiring
 3. Instantiates `RestClientInterceptor`, `DirtyRecordTracker`, and `BlobStoreManager`
-4. Applies session configuration (`_applySessionConfig`) — writes `SessionDataSource` and `DefaultSessionObject` to `fable.settings`
-5. Initializes `DataCacheManager` (async — downloads sql.js WASM and opens the database)
+4. Applies session configuration (`_applySessionConfig`) -- writes `SessionDataSource` and `DefaultSessionObject` to `fable.settings`
+5. Initializes `DataCacheManager` (async -- downloads sql.js WASM and opens the database)
 6. Initializes `IPCOratorManager`
 7. Initializes `BlobStoreManager` (opens IndexedDB, or skips if delegate set)
 8. Sets `initialized = true` and calls the callback
@@ -63,10 +63,10 @@ Calling `initializeAsync()` when the provider is already initialized is a no-op.
 ```javascript
 tmpOffline.initializeAsync(() =>
 {
-    // First call — does the work
+    // First call -- does the work
     tmpOffline.initializeAsync(() =>
     {
-        // Second call — warns "Already initialized" and calls back immediately
+        // Second call -- warns "Already initialized" and calls back immediately
     });
 });
 ```
@@ -80,8 +80,8 @@ tmpOffline.setNativeBridge(myNativeSQLiteBridge);
 
 tmpOffline.initializeAsync((pError) =>
 {
-    // sql.js was never loaded — all queries will route through the bridge
-    console.log('Mode:', tmpOffline.useNativeBridge); // → true
+    // sql.js was never loaded -- all queries will route through the bridge
+    console.log('Mode:', tmpOffline.useNativeBridge); // -> true
 });
 ```
 
@@ -141,6 +141,6 @@ seedEntity / normal RestClient usage
 
 ## Related
 
-- [Configuration Reference](configuration.md) — options that affect initialization
-- [setNativeBridge](api-setNativeBridge.md) — call this before `initializeAsync` to use native SQLite
-- [connect](api-connect.md) — the next step after initialization completes
+- [Configuration Reference](configuration.md) -- options that affect initialization
+- [setNativeBridge](api-setNativeBridge.md) -- call this before `initializeAsync` to use native SQLite
+- [connect](api-connect.md) -- the next step after initialization completes

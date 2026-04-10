@@ -48,7 +48,7 @@ tmpOffline.addEntities(
             return;
         }
         console.log('All entities registered:', tmpOffline.entityNames);
-        // → ['Book', 'Author', 'BookAuthorJoin', 'Publisher', 'Review']
+        // -> ['Book', 'Author', 'BookAuthorJoin', 'Publisher', 'Review']
     });
 ```
 
@@ -76,7 +76,7 @@ tmpOffline.addEntities(tmpAllSchemas, (pError) =>
 
 ## Error Handling
 
-Unlike sequential chaining, `addEntities()` **does not abort on the first error**. It continues through the whole array and calls the callback with the first error it saw. This is usually the right behavior — one broken schema in a hundred shouldn't prevent the other ninety-nine from loading.
+Unlike sequential chaining, `addEntities()` **does not abort on the first error**. It continues through the whole array and calls the callback with the first error it saw. This is usually the right behavior -- one broken schema in a hundred shouldn't prevent the other ninety-nine from loading.
 
 If you need "fail fast" semantics, use `addEntity()` in a sequential chain and bail out on the first error:
 
@@ -99,7 +99,7 @@ function addEntitiesStrict(pOffline, pSchemas, fCallback)
 
 ## Code Example: Registration Order
 
-Order matters if you have entities that reference each other via `Join` columns — but only for `remapID()` traversal, not for the initial table creation. SQLite doesn't enforce foreign keys unless you tell it to, and `addEntity()` doesn't tell it to.
+Order matters if you have entities that reference each other via `Join` columns -- but only for `remapID()` traversal, not for the initial table creation. SQLite doesn't enforce foreign keys unless you tell it to, and `addEntity()` doesn't tell it to.
 
 Still, it's conventional to register in dependency order (parents before children):
 
@@ -133,6 +133,6 @@ For a hundred entities:
 
 ## Related
 
-- [addEntity](api-addEntity.md) — the single-entity version; used internally by this method
-- [Entity Schema](entity-schema.md) — the schema format each array element must follow
-- [getEntity](api-getEntity.md) — inspect a registered entity after batch registration
+- [addEntity](api-addEntity.md) -- the single-entity version; used internally by this method
+- [Entity Schema](entity-schema.md) -- the schema format each array element must follow
+- [getEntity](api-getEntity.md) -- inspect a registered entity after batch registration

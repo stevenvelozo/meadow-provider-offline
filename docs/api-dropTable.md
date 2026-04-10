@@ -31,7 +31,7 @@ tmpOffline.dataCacheManager.dropTable('Book', (pError) =>
 
 ## Typical Use With removeEntity
 
-`provider.removeEntity(name)` **does not** drop the SQLite table — it only unregisters the entity from the provider's registry and the interceptor. If you want full teardown, combine the two:
+`provider.removeEntity(name)` **does not** drop the SQLite table -- it only unregisters the entity from the provider's registry and the interceptor. If you want full teardown, combine the two:
 
 ```javascript
 tmpOffline.removeEntity('Book');
@@ -76,7 +76,7 @@ Because the DROP statement uses `IF EXISTS`, dropping a table that doesn't exist
 
 ## Related
 
-- [createTable](api-createTable.md) — create a new table
-- [seedTable](api-seedTable.md) — populate a table
-- `resetTable(schema, callback)` — drop and recreate in a single call
-- [removeEntity](api-removeEntity.md) — unregister an entity without dropping its table
+- [createTable](api-createTable.md) -- create a new table
+- [seedTable](api-seedTable.md) -- populate a table
+- `resetTable(schema, callback)` -- drop and recreate in a single call
+- [removeEntity](api-removeEntity.md) -- unregister an entity without dropping its table

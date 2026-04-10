@@ -10,7 +10,7 @@ setNativeBridge(pBridgeFunction)
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `pBridgeFunction` | function | A function with signature `(pQueryInfo, fCallback)` — see below |
+| `pBridgeFunction` | function | A function with signature `(pQueryInfo, fCallback)` -- see below |
 
 **Returns:** nothing.
 
@@ -21,12 +21,12 @@ setNativeBridge(pBridgeFunction)
 ```javascript
 // Correct order
 tmpOffline = _Fable.serviceManager.instantiateServiceProvider('MeadowProviderOffline', {});
-tmpOffline.setNativeBridge(myBridge);        // ← Before init
+tmpOffline.setNativeBridge(myBridge);        // <- Before init
 tmpOffline.initializeAsync(() => { /* ... */ });
 
-// Wrong order — setNativeBridge is ignored
+// Wrong order -- setNativeBridge is ignored
 tmpOffline.initializeAsync(() => { /* ... */ });
-tmpOffline.setNativeBridge(myBridge);        // ← Too late, logs error
+tmpOffline.setNativeBridge(myBridge);        // <- Too late, logs error
 ```
 
 ## Bridge Function Signature
@@ -81,9 +81,9 @@ tmpOffline.setNativeBridge(myNativeBridge);
 tmpOffline.initializeAsync((pError) =>
 {
     if (pError) throw pError;
-    console.log('Native bridge mode:', tmpOffline.useNativeBridge); // → true
+    console.log('Native bridge mode:', tmpOffline.useNativeBridge); // -> true
 
-    // Add entities — createTable is skipped in bridge mode
+    // Add entities -- createTable is skipped in bridge mode
     tmpOffline.addEntity(bookSchema, () =>
     {
         tmpOffline.connect(_Fable.RestClient);
@@ -128,7 +128,7 @@ tmpOffline.setNativeBridge(sqliteBridge);
 tmpOffline.initializeAsync(() => { /* ... */ });
 ```
 
-Synchronous bridges work fine — the provider's callback-based API handles both sync and async equally well.
+Synchronous bridges work fine -- the provider's callback-based API handles both sync and async equally well.
 
 ## Code Example: Test Fake
 
@@ -198,6 +198,6 @@ if (tmpOffline.useNativeBridge)
 
 ## Related
 
-- [Native Bridge](native-bridge.md) — full walkthrough with iOS, Electron, and test examples
-- [initializeAsync](api-initializeAsync.md) — must be called after `setNativeBridge`
+- [Native Bridge](native-bridge.md) -- full walkthrough with iOS, Electron, and test examples
+- [initializeAsync](api-initializeAsync.md) -- must be called after `setNativeBridge`
 - [Configuration Reference § Native-Bridge Configuration](configuration.md#example-native-bridge-configuration)

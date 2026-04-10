@@ -1,6 +1,6 @@
 # seedEntity
 
-Clear an entity's SQLite table and insert a fresh set of records. Use this to bulk-load data into the offline cache — typically from a server response fetched while the app was still online.
+Clear an entity's SQLite table and insert a fresh set of records. Use this to bulk-load data into the offline cache -- typically from a server response fetched while the app was still online.
 
 ## Signature
 
@@ -46,14 +46,14 @@ tmpOffline.addEntity(bookSchema, () =>
             .prepare('SELECT COUNT(*) as count FROM Book')
             .getAsObject({});
         console.log('Seeded', tmpCount.count, 'books');
-        // → Seeded 3 books
+        // -> Seeded 3 books
     });
 });
 ```
 
 ## Code Example: Fetching from Server Before Going Offline
 
-The classic use case — pull a snapshot from the real server while still online, seed it into SQLite, then disconnect and let the app use the cached data:
+The classic use case -- pull a snapshot from the real server while still online, seed it into SQLite, then disconnect and let the app use the cached data:
 
 ```javascript
 function seedFromServer(pOffline, pRestClient, pEntityName, fCallback)
@@ -80,7 +80,7 @@ seedFromServer(tmpOffline, _Fable.RestClient, 'Book', () =>
         seedFromServer(tmpOffline, _Fable.RestClient, 'Review', () =>
         {
             tmpOffline.connect(_Fable.RestClient);
-            // Now the app can go offline — all data is locally cached
+            // Now the app can go offline -- all data is locally cached
         });
     });
 });
@@ -142,11 +142,11 @@ tmpOffline.seedEntity('Book', bookRecords);
 tmpOffline.dataCacheManager.ingestRecords('Book', bookRecords);
 ```
 
-Cache-through mode uses `ingestRecords()` internally for exactly this reason — you don't want a stray cache refresh to wipe out records that haven't been fetched yet.
+Cache-through mode uses `ingestRecords()` internally for exactly this reason -- you don't want a stray cache refresh to wipe out records that haven't been fetched yet.
 
 ## Native Bridge Behavior
 
-In native bridge mode, `seedEntity()` is a no-op and returns success immediately. The native app is expected to manage its own data — the provider assumes the native host knows how to populate SQLite from whatever source it uses.
+In native bridge mode, `seedEntity()` is a no-op and returns success immediately. The native app is expected to manage its own data -- the provider assumes the native host knows how to populate SQLite from whatever source it uses.
 
 If you need to populate data in native bridge mode, send a seed command through the bridge itself:
 
@@ -166,7 +166,7 @@ myNativeBridge(
 
 ## Related
 
-- [injectRecords](api-injectRecords.md) — alias for `seedEntity` (semantic clarity)
-- [addEntity](api-addEntity.md) — must be called first
-- [DataCacheManager seedTable](api-seedTable.md) — the underlying method that does the work
-- [DataCacheManager ingestRecords](api-ingestRecords.md) — upsert without clearing
+- [injectRecords](api-injectRecords.md) -- alias for `seedEntity` (semantic clarity)
+- [addEntity](api-addEntity.md) -- must be called first
+- [DataCacheManager seedTable](api-seedTable.md) -- the underlying method that does the work
+- [DataCacheManager ingestRecords](api-ingestRecords.md) -- upsert without clearing

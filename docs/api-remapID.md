@@ -14,7 +14,7 @@ remapID(pEntityName, pOldID, pNewID)
 | `pOldID` | number or string | The old ID (typically negative from offline creates) |
 | `pNewID` | number or string | The new ID (typically the positive ID the server assigned) |
 
-**Returns:** `number` — the total number of rows updated across all tables (the entity's own table plus all foreign key references found).
+**Returns:** `number` -- the total number of rows updated across all tables (the entity's own table plus all foreign key references found).
 
 ## What It Does
 
@@ -32,12 +32,12 @@ remapID(pEntityName, pOldID, pNewID)
 // Later: sync to server, server returns a real ID 4217
 let tmpRowsUpdated = tmpOffline.remapID('Book', -1, 4217);
 console.log('Updated', tmpRowsUpdated, 'rows across all tables');
-// → might be 5: 1 in Book, 3 in BookAuthorJoin, 1 in Review
+// -> might be 5: 1 in Book, 3 in BookAuthorJoin, 1 in Review
 ```
 
 ## Code Example: Full Sync Replay
 
-The canonical use — integrated into a sync loop:
+The canonical use -- integrated into a sync loop:
 
 ```javascript
 function syncOne(pOffline, pRestClient, pMutation, fCallback)
@@ -55,7 +55,7 @@ function syncOne(pOffline, pRestClient, pMutation, fCallback)
                 let tmpNewID = pCreated[tmpIDField];
                 if (pMutation.id !== tmpNewID)
                 {
-                    console.log(`Remapping ${pMutation.entity} ${pMutation.id} → ${tmpNewID}`);
+                    console.log(`Remapping ${pMutation.entity} ${pMutation.id} -> ${tmpNewID}`);
                     let tmpRowsChanged = pOffline.remapID(pMutation.entity, pMutation.id, tmpNewID);
                     console.log(`  Updated ${tmpRowsChanged} rows`);
                 }
@@ -96,9 +96,9 @@ tmpOffline.dataCacheManager.db
 | Entity not registered | Logs a warning, returns `0` |
 | SQL error on primary update | Logs error, continues with foreign key updates |
 | SQL error on foreign key update | Logs error for that table, continues to the next |
-| Native bridge mode | **Not supported** — logs an error and returns `0` |
+| Native bridge mode | **Not supported** -- logs an error and returns `0` |
 
-The method is deliberately forgiving — it tries to update as much as it can and reports the total rows affected. If you need strict error handling, call it inside a try/catch and inspect the logs.
+The method is deliberately forgiving -- it tries to update as much as it can and reports the total rows affected. If you need strict error handling, call it inside a try/catch and inspect the logs.
 
 ## Native Bridge Limitation
 
@@ -121,7 +121,7 @@ Then handle `'__REMAP_ID__'` inside your bridge function on the native side.
 
 ## Transactional Guarantees
 
-The UPDATE statements are run sequentially, not in a single transaction. If a failure happens partway through, some tables will have been updated and others won't have been. In sql.js this is usually fine — the failure modes are rare — but if you need strict all-or-nothing semantics, wrap the call in a sql.js transaction manually:
+The UPDATE statements are run sequentially, not in a single transaction. If a failure happens partway through, some tables will have been updated and others won't have been. In sql.js this is usually fine -- the failure modes are rare -- but if you need strict all-or-nothing semantics, wrap the call in a sql.js transaction manually:
 
 ```javascript
 let tmpDb = tmpOffline.dataCacheManager.db;
@@ -140,6 +140,6 @@ catch (pError)
 
 ## Related
 
-- [enableNegativeIDs](api-enableNegativeIDs.md) — the feature that generates the negative IDs remapID is designed to clean up
-- [getNextNegativeID](api-getNextNegativeID.md) — how negative IDs are chosen initially
+- [enableNegativeIDs](api-enableNegativeIDs.md) -- the feature that generates the negative IDs remapID is designed to clean up
+- [getNextNegativeID](api-getNextNegativeID.md) -- how negative IDs are chosen initially
 - [Sync Strategies § Negative ID Remapping](sync-strategies.md#negative-id-remapping)

@@ -36,7 +36,7 @@ tmpCache.seedTable('Book',
 
 let tmpCount = tmpCache.db.prepare('SELECT COUNT(*) as count FROM Book').getAsObject({});
 console.log('Rows in Book:', tmpCount.count);
-// → 3
+// -> 3
 ```
 
 ## Code Example: Via provider.seedEntity
@@ -82,7 +82,7 @@ tmpCache.seedTable('Book', [
 
 ## Related
 
-- [seedEntity](api-seedEntity.md) — the provider-level wrapper that calls this
-- [ingestRecords](api-ingestRecords.md) — upsert variant that doesn't clear
-- [createTable](api-createTable.md) — create the table before seeding it
-- [clearTable](api-clearTable.md) — just clear without seeding
+- [seedEntity](api-seedEntity.md) -- the provider-level wrapper that calls this
+- [ingestRecords](api-ingestRecords.md) -- upsert variant that doesn't clear
+- [createTable](api-createTable.md) -- create the table before seeding it
+- [clearTable](api-clearTable.md) -- just clear without seeding

@@ -26,7 +26,7 @@ For each `addEntity()` call:
 5. Points the DAL at the `SQLite` provider (or a native bridge if one is set)
 6. Creates `meadow-endpoints` for the DAL
 7. Adds post-Create / post-Update / post-Delete behaviors that call `dirtyTracker.trackMutation(...)`
-8. Patches the Update endpoint to accept negative IDs (always applied — harmless if `enableNegativeIDs` isn't active)
+8. Patches the Update endpoint to accept negative IDs (always applied -- harmless if `enableNegativeIDs` isn't active)
 9. Connects the endpoint routes to the IPC Orator server
 10. Registers the URL prefix (`/1.0/<Scope>`) with the interceptor
 11. If not using native bridge: creates the SQLite table via `CREATE TABLE IF NOT EXISTS`
@@ -57,7 +57,7 @@ The callback is optional. If you don't need to know when registration completes 
 
 ```javascript
 tmpOffline.addEntity(bookSchema);
-// Entity is synchronously available — safe to use immediately in sql.js mode
+// Entity is synchronously available -- safe to use immediately in sql.js mode
 tmpOffline.seedEntity('Book', [{ IDBook: 1, Title: 'Example' }]);
 ```
 
@@ -80,7 +80,7 @@ tmpOffline.addEntity(bookSchema, () =>
 });
 ```
 
-This still works, but for more than a couple of entities use [addEntities](api-addEntities.md) instead — it's faster and produces cleaner code.
+This still works, but for more than a couple of entities use [addEntities](api-addEntities.md) instead -- it's faster and produces cleaner code.
 
 ## Code Example: Inspecting the Result
 
@@ -94,7 +94,7 @@ tmpOffline.addEntity(bookSchema, () =>
     console.log('Endpoints:', tmpEntity.endpoints);
     console.log('Endpoint route prefix:',
         `/${tmpEntity.endpoints.EndpointVersion}/${tmpEntity.endpoints.EndpointName}`);
-    // → /1.0/Books
+    // -> /1.0/Books
 });
 ```
 
@@ -103,8 +103,8 @@ tmpOffline.addEntity(bookSchema, () =>
 The URL prefix that gets registered is derived from the endpoint's `EndpointVersion` and `EndpointName` properties:
 
 ```
-/1.0/Books        ← the list / filter / count endpoints
-/1.0/Book         ← the single-record endpoints (Create, Read, Update, Delete)
+/1.0/Books        <- the list / filter / count endpoints
+/1.0/Book         <- the single-record endpoints (Create, Read, Update, Delete)
 ```
 
 Meadow-endpoints uses the schema's `Scope` as the singular route and the pluralised form (`Scope + 's'`) as the plural route. The interceptor registers the shared prefix `/1.0/Book` (singular), which matches both plural (`/1.0/Books/...`) and singular (`/1.0/Book/42`) routes because prefix-matching is inclusive.
@@ -118,7 +118,7 @@ Every `addEntity()` call runs `_patchUpdateEndpointForNegativeIDs()` against the
 The behaviors added to the endpoints fire **after** meadow has committed the mutation to SQLite:
 
 ```
-POST /1.0/Book → meadow.doCreate → SQLite INSERT → post-Create behavior → trackMutation
+POST /1.0/Book -> meadow.doCreate -> SQLite INSERT -> post-Create behavior -> trackMutation
 ```
 
 This ensures the tracker only sees mutations that actually persisted. If meadow throws or the SQL fails, the mutation is not tracked.
@@ -128,15 +128,15 @@ This ensures the tracker only sees mutations that actually persisted. If meadow 
 | Error | Cause |
 |-------|-------|
 | `"Not initialized. Call initializeAsync() first."` | Called before `initializeAsync()` completed |
-| `"Invalid schema — must have a Scope property."` | The schema doesn't have a `Scope` field |
-| Table creation failure | SQLite DDL failure — passed through to the callback |
+| `"Invalid schema -- must have a Scope property."` | The schema doesn't have a `Scope` field |
+| Table creation failure | SQLite DDL failure -- passed through to the callback |
 
 If the entity is already registered, a warning is logged and the callback is called with no error.
 
 ## Related
 
-- [addEntities](api-addEntities.md) — faster batch registration for multiple schemas
-- [removeEntity](api-removeEntity.md) — reverse operation (partial — SQLite table is not dropped)
-- [getEntity](api-getEntity.md) — inspect a registered entity
-- [Entity Schema](entity-schema.md) — the schema format this method accepts
-- [seedEntity](api-seedEntity.md) — usually called right after `addEntity()` to populate data
+- [addEntities](api-addEntities.md) -- faster batch registration for multiple schemas
+- [removeEntity](api-removeEntity.md) -- reverse operation (partial -- SQLite table is not dropped)
+- [getEntity](api-getEntity.md) -- inspect a registered entity
+- [Entity Schema](entity-schema.md) -- the schema format this method accepts
+- [seedEntity](api-seedEntity.md) -- usually called right after `addEntity()` to populate data

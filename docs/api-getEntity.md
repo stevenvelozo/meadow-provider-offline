@@ -54,14 +54,14 @@ tmpEntity.dal.doReads('FBV~Title~EQ~"Breakfast of Champions"', 0, 10,
     });
 ```
 
-This is how tests and debug tooling reach into the data layer directly. In normal app code you'd use the intercepted `RestClient` — `RestClient.getJSON('/1.0/Books/...')` — which routes through the same DAL under the hood.
+This is how tests and debug tooling reach into the data layer directly. In normal app code you'd use the intercepted `RestClient` -- `RestClient.getJSON('/1.0/Books/...')` -- which routes through the same DAL under the hood.
 
 ## Code Example: Inspecting the Endpoint Route Names
 
 ```javascript
 let tmpEntity = tmpOffline.getEntity('Book');
-console.log('Version:', tmpEntity.endpoints.EndpointVersion);  // → '1.0'
-console.log('Name:', tmpEntity.endpoints.EndpointName);         // → 'Book' or 'Books'
+console.log('Version:', tmpEntity.endpoints.EndpointVersion);  // -> '1.0'
+console.log('Name:', tmpEntity.endpoints.EndpointName);         // -> 'Book' or 'Books'
 ```
 
 This is how the provider derives the URL prefixes it registers with the interceptor.
@@ -94,15 +94,15 @@ function safeSeed(pOffline, pName, pRecords)
 }
 ```
 
-## Returns `undefined` — Not `null`
+## Returns `undefined` -- Not `null`
 
 `getEntity()` reads from a plain object (`this._Entities[name]`). Missing keys produce `undefined`, not `null`. Always check with `!tmpEntity` or `typeof tmpEntity !== 'undefined'`:
 
 ```javascript
 let tmpEntity = tmpOffline.getEntity('NonExistent');
-console.log(typeof tmpEntity);  // → 'undefined'
-console.log(tmpEntity === undefined);  // → true
-console.log(tmpEntity === null);  // → false
+console.log(typeof tmpEntity);  // -> 'undefined'
+console.log(tmpEntity === undefined);  // -> true
+console.log(tmpEntity === null);  // -> false
 ```
 
 ## Mutating the Returned Object
@@ -113,7 +113,7 @@ In most cases you want to treat the result as read-only. If you need to modify t
 
 ## Related
 
-- [addEntity](api-addEntity.md) — the operation that creates what `getEntity` returns
-- [removeEntity](api-removeEntity.md) — after this, `getEntity` returns `undefined`
-- `provider.entityNames` — list of all currently-registered entity names
-- [Entity Schema](entity-schema.md) — the format of `schema` in the returned object
+- [addEntity](api-addEntity.md) -- the operation that creates what `getEntity` returns
+- [removeEntity](api-removeEntity.md) -- after this, `getEntity` returns `undefined`
+- `provider.entityNames` -- list of all currently-registered entity names
+- [Entity Schema](entity-schema.md) -- the format of `schema` in the returned object

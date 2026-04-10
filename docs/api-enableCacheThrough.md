@@ -51,14 +51,14 @@ tmpOffline.initializeAsync(() =>
 ```javascript
 tmpOffline.enableCacheThrough();
 
-// First request — record not in SQLite, falls through to network
+// First request -- record not in SQLite, falls through to network
 _Fable.RestClient.getJSON('/1.0/Book/42', (pError, pRes, pBook) =>
 {
-    console.log(pBook);  // { IDBook: 42, Title: '...' } — from network
+    console.log(pBook);  // { IDBook: 42, Title: '...' } -- from network
     // At this point the book is ingested into SQLite behind the scenes
 });
 
-// Second request — record now in SQLite, served locally
+// Second request -- record now in SQLite, served locally
 _Fable.RestClient.getJSON('/1.0/Book/42', (pError, pRes, pBook) =>
 {
     console.log(pBook);  // Same data, but came from SQLite this time
@@ -81,7 +81,7 @@ _Fable.RestClient.putJSON('/1.0/Book', { IDBook: 42, Title: 'Edited Locally' }, 
     _Fable.RestClient.getJSON('/1.0/Book/42', (pError, pRes, pBook) =>
     {
         // The network response is NOT cached because the local version is dirty
-        // (the callback still receives the network response — safety only
+        // (the callback still receives the network response -- safety only
         // blocks the write to SQLite)
     });
 });
@@ -119,7 +119,7 @@ See [Native Bridge](native-bridge.md) for the full bridge implementation.
 
 ## Related
 
-- [Architecture § Cache-Through Flow](architecture.md#cache-through-flow) — sequence diagram
-- [DataCacheManager ingestRecords](api-ingestRecords.md) — the underlying upsert method
-- [connect](api-connect.md) — must be called before cache-through can do anything
+- [Architecture § Cache-Through Flow](architecture.md#cache-through-flow) -- sequence diagram
+- [DataCacheManager ingestRecords](api-ingestRecords.md) -- the underlying upsert method
+- [connect](api-connect.md) -- must be called before cache-through can do anything
 - [Concepts § Cache-Through](concepts.md#cache-through)

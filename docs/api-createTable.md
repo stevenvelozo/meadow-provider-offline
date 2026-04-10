@@ -90,7 +90,7 @@ See [Entity Schema § Column Types](entity-schema.md#column-types) for the full 
 
 ## Related
 
-- [dropTable](api-dropTable.md) — remove a table
-- [seedTable](api-seedTable.md) — populate a table
-- [addEntity](api-addEntity.md) — the normal caller of this method
-- [Entity Schema](entity-schema.md) — format of `pPackageSchema`
+- [dropTable](api-dropTable.md) -- remove a table
+- [seedTable](api-seedTable.md) -- populate a table
+- [addEntity](api-addEntity.md) -- the normal caller of this method
+- [Entity Schema](entity-schema.md) -- format of `pPackageSchema`

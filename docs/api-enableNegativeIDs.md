@@ -15,7 +15,7 @@ No parameters, no return value.
 
 When the user is offline and creates new records, the local SQLite table needs to assign primary keys. There are two options:
 
-1. **Let SQLite auto-increment positive IDs.** These may collide with server-assigned IDs when you sync — SQLite might give you ID 42, but the server might already have a record with ID 42 it never told you about.
+1. **Let SQLite auto-increment positive IDs.** These may collide with server-assigned IDs when you sync -- SQLite might give you ID 42, but the server might already have a record with ID 42 it never told you about.
 2. **Use negative IDs.** Servers always return positive IDs, so negative IDs can never collide. On sync, the client remaps each negative ID to the real positive ID the server assigns (via [`remapID()`](api-remapID.md)).
 
 Negative IDs are the safer choice and the conventional pattern in most offline-first apps. This module implements them as an opt-in feature.
@@ -44,15 +44,15 @@ tmpOffline.initializeAsync(() =>
             (pError, pRes, pCreated) =>
             {
                 console.log('Created:', pCreated);
-                // → { IDBook: -1, Title: 'New Offline Book', ... }
+                // -> { IDBook: -1, Title: 'New Offline Book', ... }
             });
 
-        // Second create — next lower negative ID
+        // Second create -- next lower negative ID
         _Fable.RestClient.postJSON('/1.0/Book', { Title: 'Another Offline Book' },
             (pError, pRes, pCreated) =>
             {
                 console.log('Created:', pCreated);
-                // → { IDBook: -2, Title: 'Another Offline Book', ... }
+                // -> { IDBook: -2, Title: 'Another Offline Book', ... }
             });
     });
 });
@@ -74,11 +74,11 @@ nextID = Math.min(minID, 0) - 1
 
 Which means:
 
-- Empty table or all-positive IDs → nextID = -1
-- Table has `-3` as minimum → nextID = -4
-- Table has `-1` as minimum → nextID = -2
+- Empty table or all-positive IDs -> nextID = -1
+- Table has `-3` as minimum -> nextID = -4
+- Table has `-1` as minimum -> nextID = -2
 
-This handles the case where negative-ID records persist across sessions — on reload, the next create picks up below the existing minimum, avoiding collisions with records created in a previous session.
+This handles the case where negative-ID records persist across sessions -- on reload, the next create picks up below the existing minimum, avoiding collisions with records created in a previous session.
 
 ## Cross-Session Persistence
 
@@ -119,7 +119,7 @@ tmpOffline.disableNegativeIDs();
 // create: IDBook = 1 (AUTOINCREMENT from the positive side)
 ```
 
-Mixing is generally a bad idea — stick with one mode per session.
+Mixing is generally a bad idea -- stick with one mode per session.
 
 ## Foreign Key References
 
@@ -143,11 +143,11 @@ SELECT MIN(IDBook) AS minID FROM Book
 
 The bridge returns the result via its callback and the create proceeds with the computed negative ID.
 
-`remapID()` is **not** supported in native bridge mode — the native host must handle remapping itself because the provider can't inspect foreign key relationships across all tables through a single bridge call.
+`remapID()` is **not** supported in native bridge mode -- the native host must handle remapping itself because the provider can't inspect foreign key relationships across all tables through a single bridge call.
 
 ## Related
 
-- [getNextNegativeID](api-getNextNegativeID.md) — the query method that computes the next ID
-- [remapID](api-remapID.md) — the remapping method used during sync
-- [Sync Strategies § Negative ID Remapping](sync-strategies.md#negative-id-remapping) — full sync pattern
+- [getNextNegativeID](api-getNextNegativeID.md) -- the query method that computes the next ID
+- [remapID](api-remapID.md) -- the remapping method used during sync
+- [Sync Strategies § Negative ID Remapping](sync-strategies.md#negative-id-remapping) -- full sync pattern
 - [Concepts § Negative ID](concepts.md#negative-id)

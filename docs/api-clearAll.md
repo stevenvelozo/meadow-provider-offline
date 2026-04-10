@@ -1,6 +1,6 @@
 # clearAll
 
-Remove every tracked mutation from the dirty log — both regular record mutations and binary mutations. Equivalent to a fresh `DirtyRecordTracker` state.
+Remove every tracked mutation from the dirty log -- both regular record mutations and binary mutations. Equivalent to a fresh `DirtyRecordTracker` state.
 
 ## Signature
 
@@ -119,12 +119,12 @@ tmpOffline.blobStore.clearAll(() => {});
 
 If you want to clear only part of the log, use the more targeted methods:
 
-- [`clearMutation(entity, id)`](api-clearMutation.md) — single mutation
-- [`clearEntity(entity)`](api-clearMutation.md#entity-wide) — all mutations for one entity
-- `clearBinaryMutation(entity, id)` — single binary mutation (see `trackBinaryMutation`)
+- [`clearMutation(entity, id)`](api-clearMutation.md) -- single mutation
+- [`clearEntity(entity)`](api-clearMutation.md#entity-wide) -- all mutations for one entity
+- `clearBinaryMutation(entity, id)` -- single binary mutation (see `trackBinaryMutation`)
 
 ## Related
 
-- [trackMutation](api-trackMutation.md) — adds to the log
-- [clearMutation](api-clearMutation.md) — clears a single entry
-- [hasDirtyRecords](api-hasDirtyRecords.md) — always returns `false` immediately after `clearAll()`
+- [trackMutation](api-trackMutation.md) -- adds to the log
+- [clearMutation](api-clearMutation.md) -- clears a single entry
+- [hasDirtyRecords](api-hasDirtyRecords.md) -- always returns `false` immediately after `clearAll()`

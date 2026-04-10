@@ -99,7 +99,7 @@ Or, more simply, use `revokeAllURLs` at unmount time to clean up everything the 
 
 ## Not Found Behavior
 
-Same as `getBlob` — if the key doesn't exist, callback gets `(null, null)`. No error, no URL.
+Same as `getBlob` -- if the key doesn't exist, callback gets `(null, null)`. No error, no URL.
 
 ## Degraded Mode
 
@@ -107,6 +107,6 @@ In degraded mode `getBlobURL` always calls back with `(null, null)`.
 
 ## Related
 
-- [getBlob](api-getBlob.md) — the raw-blob variant
-- [storeBlob](api-storeBlob.md) — put data in
-- `revokeAllURLs()` — bulk cleanup of URLs this method has created
+- [getBlob](api-getBlob.md) -- the raw-blob variant
+- [storeBlob](api-storeBlob.md) -- put data in
+- `revokeAllURLs()` -- bulk cleanup of URLs this method has created

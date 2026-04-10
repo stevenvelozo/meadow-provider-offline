@@ -82,7 +82,7 @@ tmpOffline.addEntity(bookSchema, (pBookError) =>
     {
         if (pAuthorError) return;
 
-        // Entities registered — ready to connect
+        // Entities registered -- ready to connect
     });
 });
 ```
@@ -96,7 +96,7 @@ Each `addEntity` call:
 5. Registers the endpoint routes against the IPC server
 6. Registers the URL prefix (`/1.0/Books`) with the interceptor
 
-For bulk registration use `addEntities(pSchemas, fCallback)` — it's faster than chaining `addEntity` calls.
+For bulk registration use `addEntities(pSchemas, fCallback)` -- it's faster than chaining `addEntity` calls.
 
 ## 5. Connect the RestClient
 
@@ -104,7 +104,7 @@ For bulk registration use `addEntities(pSchemas, fCallback)` — it's faster tha
 tmpOffline.connect(_Fable.RestClient);
 ```
 
-This is the magic moment. The interceptor wraps `RestClient.executeJSONRequest` in place. After this call, any URL matching a registered entity prefix is routed through IPC → SQLite instead of hitting the network. Everything else forwards to the original RestClient untouched.
+This is the magic moment. The interceptor wraps `RestClient.executeJSONRequest` in place. After this call, any URL matching a registered entity prefix is routed through IPC -> SQLite instead of hitting the network. Everything else forwards to the original RestClient untouched.
 
 If you're using `HeadlightRestClient` (the enhanced client with provider JSON methods), pass it as the second argument so its internal RestClient gets intercepted too:
 
@@ -129,7 +129,7 @@ _Fable.RestClient.getJSON('/1.0/Books/0/10000', (pError, pResponse, pBooks) =>
 
 `seedEntity()` clears the entity's SQLite table and inserts the provided records. Use it for bulk loads.
 
-For ingesting records incrementally without clearing the table, use `tmpOffline.dataCacheManager.ingestRecords(entityName, records)` (performs upserts) — this is what cache-through mode uses internally.
+For ingesting records incrementally without clearing the table, use `tmpOffline.dataCacheManager.ingestRecords(entityName, records)` (performs upserts) -- this is what cache-through mode uses internally.
 
 ## 7. Use It Normally
 
@@ -149,7 +149,7 @@ _Fable.RestClient.postJSON('/1.0/Book', { Title: 'A New Book', Author: 'Me' },
     });
 ```
 
-Neither of these calls touches the network. The interceptor saw the `/1.0/Books` / `/1.0/Book` prefix, recognised it as a registered entity, and routed the request through the IPC → SQLite path.
+Neither of these calls touches the network. The interceptor saw the `/1.0/Books` / `/1.0/Book` prefix, recognised it as a registered entity, and routed the request through the IPC -> SQLite path.
 
 ## 8. Inspect Dirty Records
 
@@ -157,7 +157,7 @@ As soon as you start creating, updating, or deleting records through intercepted
 
 ```javascript
 console.log('Pending mutations:', tmpOffline.dirtyTracker.getDirtyCount());
-// → 1
+// -> 1
 
 console.log('All mutations:', tmpOffline.dirtyTracker.getDirtyMutations());
 // [
@@ -228,11 +228,11 @@ This restores the original `executeJSONRequest` reference. Subsequent calls bypa
 
 ## 10. What to Explore Next
 
-- [Architecture](architecture.md) — sequence diagrams for the request lifecycle
-- [Sync Strategies](sync-strategies.md) — coalescing, negative IDs, and remapping
-- [Core Concepts](concepts.md) — the vocabulary
-- [Entity Schema](entity-schema.md) — what shapes `addEntity` accepts
-- [API Reference](api-reference.md) — per-method pages with code snippets for every public function
+- [Architecture](architecture.md) -- sequence diagrams for the request lifecycle
+- [Sync Strategies](sync-strategies.md) -- coalescing, negative IDs, and remapping
+- [Core Concepts](concepts.md) -- the vocabulary
+- [Entity Schema](entity-schema.md) -- what shapes `addEntity` accepts
+- [API Reference](api-reference.md) -- per-method pages with code snippets for every public function
 
 ## Full Quickstart Script
 
@@ -264,9 +264,9 @@ tmpOffline.initializeAsync((pError) =>
         tmpOffline.seedEntity('Book', []);
         tmpOffline.seedEntity('Author', []);
 
-        // Application code below can now call RestClient as usual —
+        // Application code below can now call RestClient as usual --
         // everything matching /1.0/Books or /1.0/Authors is handled
-        // locally via IPC → SQLite.
+        // locally via IPC -> SQLite.
     });
 });
 ```

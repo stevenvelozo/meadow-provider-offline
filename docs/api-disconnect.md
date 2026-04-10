@@ -27,7 +27,7 @@ disconnect(pRestClient)
 tmpOffline.connect(_Fable.RestClient);
 // ... use the app offline ...
 tmpOffline.disconnect(_Fable.RestClient);
-// RestClient is now back to normal — next call hits the network
+// RestClient is now back to normal -- next call hits the network
 ```
 
 ## Code Example: Sync Flow
@@ -37,7 +37,7 @@ The canonical use for `disconnect()` is during sync. You disconnect, replay the 
 ```javascript
 function syncAndReconnect(pOffline, pRestClient)
 {
-    // Stop intercepting — all subsequent calls hit the real network
+    // Stop intercepting -- all subsequent calls hit the real network
     pOffline.disconnect(pRestClient);
 
     // Replay dirty mutations
@@ -54,7 +54,7 @@ function syncAndReconnect(pOffline, pRestClient)
 }
 ```
 
-This pattern is essential — if you don't disconnect first, your sync calls will be caught by the interceptor and written back to SQLite instead of being sent to the server. Circular.
+This pattern is essential -- if you don't disconnect first, your sync calls will be caught by the interceptor and written back to SQLite instead of being sent to the server. Circular.
 
 See [Sync Strategies](sync-strategies.md) for the full replay pattern.
 
@@ -96,7 +96,7 @@ tmpOffline.disconnect();  // disconnects the same RestClient
 
 If you connected multiple RestClients (e.g., via the HeadlightRestClient second argument to `connect()`), you may need to disconnect each one explicitly. The interceptor tracks the primary RestClient as the one it was most recently asked to wrap; additional RestClients wrapped via `connectAdditionalRestClient()` are tracked separately.
 
-In most apps, passing the original RestClient argument is enough — HeadlightRestClient's internal restClient will also be unwrapped as part of the disconnect.
+In most apps, passing the original RestClient argument is enough -- HeadlightRestClient's internal restClient will also be unwrapped as part of the disconnect.
 
 ## Return Value
 
@@ -115,11 +115,11 @@ Returns `false` if:
 
 `disconnect()` restores the `executeJSONRequest` reference but does **not** touch:
 
-- **SQLite data** — remains in the `DataCacheManager`'s in-memory database
-- **Dirty record log** — `DirtyRecordTracker` keeps its mutations
-- **Registered entities** — still accessible via `getEntity(name)`
-- **Blob store** — still accessible via `provider.blobStore`
-- **IPC Orator** — still running; you can invoke it directly if you want
+- **SQLite data** -- remains in the `DataCacheManager`'s in-memory database
+- **Dirty record log** -- `DirtyRecordTracker` keeps its mutations
+- **Registered entities** -- still accessible via `getEntity(name)`
+- **Blob store** -- still accessible via `provider.blobStore`
+- **IPC Orator** -- still running; you can invoke it directly if you want
 
 This is intentional. You might disconnect to sync, and then reconnect; during the disconnected window, the app may want to keep reading from SQLite via direct calls into `dataCacheManager` or `ipcOratorManager`.
 
@@ -134,5 +134,5 @@ tmpOffline.dirtyTracker.clearAll();
 
 ## Related
 
-- [connect](api-connect.md) — the inverse operation
-- [Sync Strategies](sync-strategies.md) — the canonical disconnect/sync/reconnect pattern
+- [connect](api-connect.md) -- the inverse operation
+- [Sync Strategies](sync-strategies.md) -- the canonical disconnect/sync/reconnect pattern

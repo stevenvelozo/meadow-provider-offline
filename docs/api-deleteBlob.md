@@ -64,7 +64,7 @@ function syncOneBinaryAndClean(pOffline, pRestClient, pMutation, fCallback)
             {
                 if (pPostError) return fCallback(pPostError);
 
-                // Sync succeeded — clear the dirty entry and delete the blob
+                // Sync succeeded -- clear the dirty entry and delete the blob
                 pOffline.dirtyTracker.clearBinaryMutation(pMutation.entity, pMutation.id);
                 pOffline.blobStore.deleteBlob(pMutation.blobKey, fCallback);
             });
@@ -84,7 +84,7 @@ If an Object URL was created for this blob via `getBlobURL`, it gets revoked aut
 
 ## Related
 
-- [storeBlob](api-storeBlob.md) — put data in
-- [getBlob](api-getBlob.md) — read data
-- `listBlobs(prefix, callback)` — find keys to delete
-- `clearAll(callback)` — delete everything
+- [storeBlob](api-storeBlob.md) -- put data in
+- [getBlob](api-getBlob.md) -- read data
+- `listBlobs(prefix, callback)` -- find keys to delete
+- `clearAll(callback)` -- delete everything

@@ -32,19 +32,19 @@ The delegate object must implement five methods:
 ```javascript
 {
     storeBlob(pKey, pBlobData, pMetadata, fCallback)
-    // → fCallback(pError)
+    // -> fCallback(pError)
 
     getBlob(pKey, fCallback)
-    // → fCallback(pError, { blob, metadata } | null)
+    // -> fCallback(pError, { blob, metadata } | null)
 
     deleteBlob(pKey, fCallback)
-    // → fCallback(pError)
+    // -> fCallback(pError)
 
     listBlobs(pPrefix, fCallback)
-    // → fCallback(pError, [{ key, metadata }, ...])
+    // -> fCallback(pError, [{ key, metadata }, ...])
 
     clearAll(fCallback)
-    // → fCallback(pError)
+    // -> fCallback(pError)
 }
 ```
 
@@ -241,17 +241,17 @@ tmpOffline.blobStore.setStorageDelegate(electronBlobDelegate);
 
 ```javascript
 tmpOffline.blobStore.setStorageDelegate({ storeBlob: () => {} });
-// → Logs: "BlobStoreManager: Storage delegate missing required method "getBlob" — delegate not set."
+// -> Logs: "BlobStoreManager: Storage delegate missing required method "getBlob" -- delegate not set."
 ```
 
 ## Switching Backends
 
-You can switch between delegates at runtime — call `setStorageDelegate` with a new delegate and subsequent calls will route through it. Data already stored in the previous backend is **not** migrated — if you store under IndexedDB, switch to a delegate, and then try to read, the reads hit the delegate and return nothing.
+You can switch between delegates at runtime -- call `setStorageDelegate` with a new delegate and subsequent calls will route through it. Data already stored in the previous backend is **not** migrated -- if you store under IndexedDB, switch to a delegate, and then try to read, the reads hit the delegate and return nothing.
 
 To migrate data between backends, `listBlobs` on the old backend, `getBlob` each entry, and `storeBlob` them into the new one before switching.
 
 ## Related
 
-- [Native Bridge](native-bridge.md) — companion feature for SQL (sets a separate native bridge via `setNativeBridge`)
-- [storeBlob](api-storeBlob.md) / [getBlob](api-getBlob.md) / [deleteBlob](api-deleteBlob.md) — route through the delegate when set
+- [Native Bridge](native-bridge.md) -- companion feature for SQL (sets a separate native bridge via `setNativeBridge`)
+- [storeBlob](api-storeBlob.md) / [getBlob](api-getBlob.md) / [deleteBlob](api-deleteBlob.md) -- route through the delegate when set
 - [Architecture § Binary / Blob Lifecycle](architecture.md#binary--blob-lifecycle)

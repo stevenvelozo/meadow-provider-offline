@@ -1,6 +1,6 @@
 # connect
 
-Start intercepting requests on a Fable `RestClient`. After `connect()` returns, any request whose URL matches a registered entity prefix is routed through IPC → SQLite instead of HTTP. Non-matching requests pass through unchanged.
+Start intercepting requests on a Fable `RestClient`. After `connect()` returns, any request whose URL matches a registered entity prefix is routed through IPC -> SQLite instead of HTTP. Non-matching requests pass through unchanged.
 
 ## Signature
 
@@ -63,7 +63,7 @@ tmpOffline.initializeAsync((pError) =>
 tmpOffline.connect(_Fable.RestClient, _Fable.HeadlightRestClient);
 ```
 
-Without this, calls that go through HeadlightRestClient would bypass your interception entirely — they'd hit the internal RestClient you didn't wrap. The provider detects whether HeadlightRestClient's internal `restClient` is the same instance as the one you passed first, and only wraps it again if it's a different instance.
+Without this, calls that go through HeadlightRestClient would bypass your interception entirely -- they'd hit the internal RestClient you didn't wrap. The provider detects whether HeadlightRestClient's internal `restClient` is the same instance as the one you passed first, and only wraps it again if it's a different instance.
 
 ## Code Example: Implicit RestClient
 
@@ -98,17 +98,17 @@ This is how you typically sync dirty records: disconnect, replay mutations again
 
 ## Order of Operations
 
-`connect()` must be called **after** `initializeAsync()` and ideally after at least one `addEntity()` call. Calling it before entities are registered is valid but pointless — nothing would be intercepted.
+`connect()` must be called **after** `initializeAsync()` and ideally after at least one `addEntity()` call. Calling it before entities are registered is valid but pointless -- nothing would be intercepted.
 
 ```
-initializeAsync → addEntity → connect → use RestClient → disconnect
+initializeAsync -> addEntity -> connect -> use RestClient -> disconnect
 ```
 
 ## Binary Interception
 
 If `BlobStoreManager` is available (it always is unless you deliberately removed it), `connect()` also wires up binary interception via `connectBinary()`. This intercepts `executeBinaryUpload` and `executeChunkedRequest` on the RestClient so that `postBinary` and `getBinaryBlob` calls route through the blob store instead of hitting the network.
 
-You don't have to do anything to enable this — it happens automatically as part of `connect()`. If you want to opt out (e.g., because you always want binary traffic to go to the network), you can call `tmpOffline.restClientInterceptor.disconnectBinary()` afterward.
+You don't have to do anything to enable this -- it happens automatically as part of `connect()`. If you want to opt out (e.g., because you always want binary traffic to go to the network), you can call `tmpOffline.restClientInterceptor.disconnectBinary()` afterward.
 
 ## Errors
 
@@ -122,7 +122,7 @@ No exceptions are thrown. If something goes wrong, inspect the logs.
 
 ## Related
 
-- [disconnect](api-disconnect.md) — the inverse operation
-- [initializeAsync](api-initializeAsync.md) — must be called first
-- [addEntity](api-addEntity.md) — registers the URL prefixes that `connect()` will intercept
-- [Architecture § Request Lifecycle](architecture.md#request-lifecycle--getjson) — sequence diagram of what happens after connect
+- [disconnect](api-disconnect.md) -- the inverse operation
+- [initializeAsync](api-initializeAsync.md) -- must be called first
+- [addEntity](api-addEntity.md) -- registers the URL prefixes that `connect()` will intercept
+- [Architecture § Request Lifecycle](architecture.md#request-lifecycle--getjson) -- sequence diagram of what happens after connect

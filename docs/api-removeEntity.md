@@ -34,12 +34,12 @@ This is deliberate. The separation lets you temporarily stop intercepting reques
 tmpOffline.addEntity(bookSchema, () =>
 {
     console.log('After add:', tmpOffline.entityNames);
-    // → ['Book']
+    // -> ['Book']
 
     // Unregister it
     tmpOffline.removeEntity('Book');
     console.log('After remove:', tmpOffline.entityNames);
-    // → []
+    // -> []
 
     // Book's SQLite table still exists
     let tmpRows = tmpOffline.dataCacheManager.db.prepare('SELECT * FROM Book').all();
@@ -62,7 +62,7 @@ tmpOffline.dataCacheManager.dropTable('Book', (pError) =>
 
 ## Code Example: Re-registering
 
-After `removeEntity()`, you can call `addEntity()` again with the same schema — the `CREATE TABLE IF NOT EXISTS` clause means the existing table is preserved:
+After `removeEntity()`, you can call `addEntity()` again with the same schema -- the `CREATE TABLE IF NOT EXISTS` clause means the existing table is preserved:
 
 ```javascript
 tmpOffline.removeEntity('Book');
@@ -95,6 +95,6 @@ No exceptions thrown. Safe to call multiple times.
 
 ## Related
 
-- [addEntity](api-addEntity.md) — the inverse operation
-- [getEntity](api-getEntity.md) — check whether an entity is currently registered
-- [DataCacheManager dropTable](api-dropTable.md) — drop the underlying SQLite table too
+- [addEntity](api-addEntity.md) -- the inverse operation
+- [getEntity](api-getEntity.md) -- check whether an entity is currently registered
+- [DataCacheManager dropTable](api-dropTable.md) -- drop the underlying SQLite table too

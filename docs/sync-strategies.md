@@ -1,6 +1,6 @@
 # Sync Strategies
 
-Meadow Provider Offline tracks every local mutation in an in-memory dirty-record log with intelligent coalescing. The provider **does not** sync data to the server on its own — sync is an application concern, because every app has slightly different needs around conflict resolution, retries, and UX. This page documents the mechanics the tracker provides and the common replay patterns.
+Meadow Provider Offline tracks every local mutation in an in-memory dirty-record log with intelligent coalescing. The provider **does not** sync data to the server on its own -- sync is an application concern, because every app has slightly different needs around conflict resolution, retries, and UX. This page documents the mechanics the tracker provides and the common replay patterns.
 
 ## The Dirty Record Log
 
@@ -43,9 +43,9 @@ The two rules that actually matter are Create+Delete (no-op) and Create+Update (
 
 ### Why Coalesce?
 
-Without coalescing, a user who creates a new record and then deletes it before syncing would end up with two dirty entries (a Create and a Delete). When sync happens, the replay would POST the record, then DELETE it — two round trips for nothing. With coalescing, the tracker notices the Create+Delete pair and removes both entries from the log. Zero round trips, zero wasted network.
+Without coalescing, a user who creates a new record and then deletes it before syncing would end up with two dirty entries (a Create and a Delete). When sync happens, the replay would POST the record, then DELETE it -- two round trips for nothing. With coalescing, the tracker notices the Create+Delete pair and removes both entries from the log. Zero round trips, zero wasted network.
 
-Similarly, a user who creates a record, edits it three times, and then syncs should send a single POST with the final data — not a POST followed by three PUTs. The Create+Update rule handles this.
+Similarly, a user who creates a record, edits it three times, and then syncs should send a single POST with the final data -- not a POST followed by three PUTs. The Create+Update rule handles this.
 
 ## The Basic Sync Pattern
 
@@ -163,7 +163,7 @@ The replay order matters: always sync Creates before Updates, and sync records i
 
 ## Conflict Resolution
 
-The tracker doesn't take a position on conflicts. If the server's version of a record has been updated since you went offline, your sync replay will overwrite it with the local version — that may or may not be what you want. Common strategies:
+The tracker doesn't take a position on conflicts. If the server's version of a record has been updated since you went offline, your sync replay will overwrite it with the local version -- that may or may not be what you want. Common strategies:
 
 ### Last-Write-Wins
 
@@ -189,12 +189,12 @@ function syncUpdateWithConflictCheck(pProvider, pRestClient, pMutation, fCallbac
 
             if (tmpServerUpdate > tmpLocalUpdate)
             {
-                // Server is newer — drop the local mutation
+                // Server is newer -- drop the local mutation
                 pProvider.dirtyTracker.clearMutation(pMutation.entity, pMutation.id);
                 return fCallback();
             }
 
-            // Local is newer — replay
+            // Local is newer -- replay
             pRestClient.putJSON(`/1.0/${pMutation.entity}`, pMutation.record,
                 (pError) =>
                 {
@@ -207,7 +207,7 @@ function syncUpdateWithConflictCheck(pProvider, pRestClient, pMutation, fCallbac
 
 ### Three-Way Merge
 
-Keep the original version (the record as it was when you went offline), the local mutation, and the server's current version. Merge field-by-field. This is the most user-friendly strategy but requires storing the "original" version somewhere — typically by snapshotting `dataCacheManager` before going offline.
+Keep the original version (the record as it was when you went offline), the local mutation, and the server's current version. Merge field-by-field. This is the most user-friendly strategy but requires storing the "original" version somewhere -- typically by snapshotting `dataCacheManager` before going offline.
 
 ## Partial Sync
 

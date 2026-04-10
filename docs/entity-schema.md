@@ -1,6 +1,6 @@
 # Entity Schema
 
-Entities in Meadow Provider Offline are registered using **Meadow package schema objects** — the same JSON format produced by `meadow-schema-pkg` and consumed by `Meadow.loadFromPackageObject()`. This page documents the schema format, the column types the provider supports, and how to hand-write a schema when you don't have one pre-built.
+Entities in Meadow Provider Offline are registered using **Meadow package schema objects** -- the same JSON format produced by `meadow-schema-pkg` and consumed by `Meadow.loadFromPackageObject()`. This page documents the schema format, the column types the provider supports, and how to hand-write a schema when you don't have one pre-built.
 
 ## Top-Level Shape
 
@@ -87,7 +87,7 @@ Column types come from meadow's type system. The provider's `DataCacheManager.co
 | `DeleteIDUser` | `INTEGER` | Auto-populated with session user ID on Delete. |
 | `Deleted` | `INTEGER` | Soft-delete flag (0 / 1). |
 
-Any unknown `Type` defaults to `TEXT`. Unknown column types are passed through by meadow itself — for custom types you can trust meadow to handle them consistently.
+Any unknown `Type` defaults to `TEXT`. Unknown column types are passed through by meadow itself -- for custom types you can trust meadow to handle them consistently.
 
 ## Hand-Writing a Schema
 
@@ -127,7 +127,7 @@ const noteSchema =
 tmpOffline.addEntity(noteSchema);
 ```
 
-This gives you an offline `Note` entity with full CRUD. The audit columns (`CreateDate`, `CreatingIDUser`, `UpdateDate`, `UpdatingIDUser`, `Deleted`) are boilerplate but recommended for real apps — meadow and meadow-endpoints know about them and will populate them automatically on the appropriate lifecycle events.
+This gives you an offline `Note` entity with full CRUD. The audit columns (`CreateDate`, `CreatingIDUser`, `UpdateDate`, `UpdatingIDUser`, `Deleted`) are boilerplate but recommended for real apps -- meadow and meadow-endpoints know about them and will populate them automatically on the appropriate lifecycle events.
 
 ## Foreign Keys
 
@@ -186,7 +186,7 @@ After registering entities, inspect the provider to verify everything is wired u
 
 ```javascript
 console.log('Entity names:', tmpOffline.entityNames);
-// → [ 'Book', 'Author', 'BookAuthorJoin', 'Publisher' ]
+// -> [ 'Book', 'Author', 'BookAuthorJoin', 'Publisher' ]
 
 let tmpBookEntity = tmpOffline.getEntity('Book');
 console.log('Book DAL:', tmpBookEntity.dal);

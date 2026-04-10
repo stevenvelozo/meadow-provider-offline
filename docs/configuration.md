@@ -17,7 +17,7 @@ const tmpOffline = _Fable.serviceManager.instantiateServiceProvider('MeadowProvi
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `SessionDataSource` | string | `'None'` | Value written to `fable.settings.MeadowEndpointsSessionDataSource`. Tells meadow-endpoints where to read session state from. `'None'` bypasses session authentication entirely — appropriate for browser-side offline mode. |
+| `SessionDataSource` | string | `'None'` | Value written to `fable.settings.MeadowEndpointsSessionDataSource`. Tells meadow-endpoints where to read session state from. `'None'` bypasses session authentication entirely -- appropriate for browser-side offline mode. |
 | `DefaultSessionObject` | object | default user session | Value written to `fable.settings.MeadowEndpointsDefaultSessionObject`. The session object meadow-endpoints uses when `SessionDataSource` is `'None'`. Must have at minimum `UserID`, `UserRole`, `UserRoleIndex`, and `LoggedIn`. See [Default Session Object](#default-session-object) for the fallback shape. |
 | `MeadowEndpoints` | object | *(none)* | Optional `MeadowEndpoints` provider URL configuration. Written directly to `fable.settings.MeadowEndpoints`. Usually unused in browser-offline mode, but exposed for cases where your in-memory endpoints need to know about a "real" server for some of their behaviors. |
 
@@ -77,7 +77,7 @@ A few knobs are controlled through methods on the provider rather than construct
 |------|--------|---------|
 | Cache-through mode | `enableCacheThrough()` / `disableCacheThrough()` | off |
 | Negative ID assignment | `enableNegativeIDs()` / `disableNegativeIDs()` | off |
-| Native bridge | `setNativeBridge(fn)` — call **before** `initializeAsync()` | unset (uses sql.js) |
+| Native bridge | `setNativeBridge(fn)` -- call **before** `initializeAsync()` | unset (uses sql.js) |
 | Blob storage delegate | `blobStore.setStorageDelegate(delegate)` | unset (uses IndexedDB) |
 
 These are separate from constructor options because they often depend on decisions made after other services have been wired up (e.g., whether a native host is present, whether a particular entity needs negative IDs).
@@ -124,7 +124,7 @@ const tmpOffline = _Fable.serviceManager.instantiateServiceProvider('MeadowProvi
         DefaultSessionObject: { UserID: 1, UserRole: 'Administrator', UserRoleIndex: 255, LoggedIn: true }
     });
 
-// Set the bridge BEFORE initializeAsync — this tells the provider to skip sql.js
+// Set the bridge BEFORE initializeAsync -- this tells the provider to skip sql.js
 tmpOffline.setNativeBridge(myNativeBridgeFunction);
 
 // Optional: set a blob delegate too

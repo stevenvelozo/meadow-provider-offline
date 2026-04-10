@@ -1,6 +1,6 @@
 # injectRecords
 
-Alias for [`seedEntity`](api-seedEntity.md) with a different name that signals intent. Use `injectRecords` when the records come from an external source — a native app wrapper, a file import, a test fixture — rather than from a prior server fetch.
+Alias for [`seedEntity`](api-seedEntity.md) with a different name that signals intent. Use `injectRecords` when the records come from an external source -- a native app wrapper, a file import, a test fixture -- rather than from a prior server fetch.
 
 ## Signature
 
@@ -20,14 +20,14 @@ injectRecords(pEntityName, pRecords, fCallback)
 
 There's no functional difference. `injectRecords` calls `seedEntity` internally. The difference is intent:
 
-- **`seedEntity`** — "I'm loading a known set of records, probably fetched from the server before we went offline."
-- **`injectRecords`** — "Some external source (a native app wrapper, a file, a test) is handing me a record set to inject into the cache."
+- **`seedEntity`** -- "I'm loading a known set of records, probably fetched from the server before we went offline."
+- **`injectRecords`** -- "Some external source (a native app wrapper, a file, a test) is handing me a record set to inject into the cache."
 
 Both clear the table and insert the new records. Both are no-ops in native bridge mode.
 
 ## Code Example: Native App Injection
 
-The canonical use case — a native iOS or Android wrapper passes data into the webview for the browser-side app to consume:
+The canonical use case -- a native iOS or Android wrapper passes data into the webview for the browser-side app to consume:
 
 ```javascript
 // Swift side (iOS WKWebView):
@@ -86,9 +86,9 @@ tmpOffline.injectRecords('Book', tmpBooks);
 | Records from a file import (CSV, JSON) | `injectRecords` |
 | Resetting to a known good state during development | either |
 
-Either method works in every situation — pick the one that makes your code read clearly. The provider doesn't care which name you use.
+Either method works in every situation -- pick the one that makes your code read clearly. The provider doesn't care which name you use.
 
 ## Related
 
-- [seedEntity](api-seedEntity.md) — the underlying method (this is just an alias)
-- [addEntity](api-addEntity.md) — must be called first
+- [seedEntity](api-seedEntity.md) -- the underlying method (this is just an alias)
+- [addEntity](api-addEntity.md) -- must be called first
