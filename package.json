@@ -59,7 +59,7 @@
     "fable-serviceproviderbase": "^3.0.19",
     "meadow": "^2.0.37",
     "meadow-connection-sqlite-browser": "^1.0.2",
-    "meadow-endpoints": "^4.0.17",
+    "meadow-endpoints": "^4.0.18",
     "orator": "^6.1.1"
   }
 }
