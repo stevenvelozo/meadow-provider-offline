@@ -50,16 +50,16 @@
   "devDependencies": {
     "@types/mocha": "^10.0.10",
     "pict-docuserve": "^0.1.5",
-    "quackage": "^1.1.3",
+    "quackage": "^1.2.3",
     "sql.js": "^1.14.1",
     "typescript": "^5.9.3"
   },
   "dependencies": {
-    "fable": "^3.1.71",
+    "fable": "^3.1.72",
     "fable-serviceproviderbase": "^3.0.19",
-    "meadow": "^2.0.37",
+    "meadow": "^2.0.38",
     "meadow-connection-sqlite-browser": "^1.0.2",
-    "meadow-endpoints": "^4.0.18",
-    "orator": "^6.1.1"
+    "meadow-endpoints": "^4.0.20",
+    "orator": "^6.1.2"
   }
 }
