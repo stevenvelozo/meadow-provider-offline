@@ -1,7 +1,7 @@
 {
 	"Name": "meadow-provider-offline",
-	"Version": "0.1.12",
+	"Version": "1.0.0",
 	"Description": "Offline-capable Meadow provider with browser-side SQLite and IPC routing.",
-	"GeneratedAt": "2026-04-10T17:21:52.657Z",
-	"GitCommit": "ab2b8e8"
+	"GeneratedAt": "2026-05-21T17:38:03.243Z",
+	"GitCommit": "945b0b0"
 }

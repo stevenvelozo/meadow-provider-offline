@@ -1,5 +1,5 @@
 {
-	"Generated": "2026-04-10T17:21:52.374Z",
+	"Generated": "2026-05-21T17:38:03.074Z",
 	"GitHubOrg": "stevenvelozo",
 	"DefaultBranch": "master",
 	"Groups": [
@@ -17,25 +17,6 @@
 					"HasCover": false,
 					"Sidebar": [],
 					"DocFiles": []
-				}
-			]
-		},
-		{
-			"Name": "Docs",
-			"Key": "docs",
-			"Description": "",
-			"Modules": [
-				{
-					"Name": "css",
-					"Repo": "css",
-					"Group": "docs",
-					"Branch": "master",
-					"HasDocs": true,
-					"HasCover": false,
-					"Sidebar": [],
-					"DocFiles": [
-						"css/docuserve.css"
-					]
 				}
 			]
 		},
