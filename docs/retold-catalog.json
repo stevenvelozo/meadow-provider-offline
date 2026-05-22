@@ -1,58 +1,253 @@
 {
-	"Generated": "2026-05-21T17:38:03.074Z",
+	"Generated": "2026-05-22T05:40:32.667Z",
+	"Mode": "module",
 	"GitHubOrg": "stevenvelozo",
 	"DefaultBranch": "master",
-	"Groups": [
-		{
-			"Name": "Dist",
-			"Key": "dist",
-			"Description": "",
-			"Modules": [
-				{
-					"Name": "indoctrinate_content_staging",
-					"Repo": "indoctrinate_content_staging",
-					"Group": "dist",
-					"Branch": "master",
-					"HasDocs": false,
-					"HasCover": false,
-					"Sidebar": [],
-					"DocFiles": []
-				}
-			]
-		},
-		{
-			"Name": "Source",
-			"Key": "source",
-			"Description": "",
-			"Modules": [
-				{
-					"Name": "build",
-					"Repo": "build",
-					"Group": "source",
-					"Branch": "master",
-					"HasDocs": false,
-					"HasCover": false,
-					"Sidebar": [],
-					"DocFiles": []
-				}
-			]
-		},
-		{
-			"Name": "Types",
-			"Key": "types",
-			"Description": "",
-			"Modules": [
-				{
-					"Name": "build",
-					"Repo": "build",
-					"Group": "types",
-					"Branch": "master",
-					"HasDocs": false,
-					"HasCover": false,
-					"Sidebar": [],
-					"DocFiles": []
-				}
-			]
-		}
-	]
+	"Module": {
+		"Name": "meadow-provider-offline",
+		"Repo": "meadow-provider-offline",
+		"Group": "",
+		"Branch": "master",
+		"HasDocs": true,
+		"HasCover": true,
+		"Sidebar": [
+			{
+				"Title": "Getting Started",
+				"Children": [
+					{
+						"Title": "Introduction",
+						"Path": "README.md"
+					},
+					{
+						"Title": "Quick Start",
+						"Path": "quickstart.md"
+					},
+					{
+						"Title": "Architecture",
+						"Path": "architecture.md"
+					}
+				]
+			},
+			{
+				"Title": "Core Concepts",
+				"Children": [
+					{
+						"Title": "Core Concepts",
+						"Path": "concepts.md"
+					},
+					{
+						"Title": "Entity Schema",
+						"Path": "entity-schema.md"
+					},
+					{
+						"Title": "Sync Strategies",
+						"Path": "sync-strategies.md"
+					},
+					{
+						"Title": "Native Bridge",
+						"Path": "native-bridge.md"
+					},
+					{
+						"Title": "Configuration Reference",
+						"Path": "configuration.md"
+					}
+				]
+			},
+			{
+				"Title": "API Reference",
+				"Children": [
+					{
+						"Title": "API Index",
+						"Path": "api-reference.md"
+					}
+				]
+			},
+			{
+				"Title": "MeadowProviderOffline",
+				"Children": [
+					{
+						"Title": "initializeAsync",
+						"Path": "api-initializeAsync.md"
+					},
+					{
+						"Title": "addEntity",
+						"Path": "api-addEntity.md"
+					},
+					{
+						"Title": "addEntities",
+						"Path": "api-addEntities.md"
+					},
+					{
+						"Title": "removeEntity",
+						"Path": "api-removeEntity.md"
+					},
+					{
+						"Title": "seedEntity",
+						"Path": "api-seedEntity.md"
+					},
+					{
+						"Title": "injectRecords",
+						"Path": "api-injectRecords.md"
+					},
+					{
+						"Title": "connect",
+						"Path": "api-connect.md"
+					},
+					{
+						"Title": "disconnect",
+						"Path": "api-disconnect.md"
+					},
+					{
+						"Title": "enableCacheThrough",
+						"Path": "api-enableCacheThrough.md"
+					},
+					{
+						"Title": "enableNegativeIDs",
+						"Path": "api-enableNegativeIDs.md"
+					},
+					{
+						"Title": "getNextNegativeID",
+						"Path": "api-getNextNegativeID.md"
+					},
+					{
+						"Title": "remapID",
+						"Path": "api-remapID.md"
+					},
+					{
+						"Title": "setNativeBridge",
+						"Path": "api-setNativeBridge.md"
+					},
+					{
+						"Title": "getEntity",
+						"Path": "api-getEntity.md"
+					}
+				]
+			},
+			{
+				"Title": "DirtyRecordTracker",
+				"Children": [
+					{
+						"Title": "trackMutation",
+						"Path": "api-trackMutation.md"
+					},
+					{
+						"Title": "getDirtyMutations",
+						"Path": "api-getDirtyMutations.md"
+					},
+					{
+						"Title": "clearMutation",
+						"Path": "api-clearMutation.md"
+					},
+					{
+						"Title": "clearAll",
+						"Path": "api-clearAll.md"
+					},
+					{
+						"Title": "hasDirtyRecords",
+						"Path": "api-hasDirtyRecords.md"
+					},
+					{
+						"Title": "trackBinaryMutation",
+						"Path": "api-trackBinaryMutation.md"
+					}
+				]
+			},
+			{
+				"Title": "DataCacheManager",
+				"Children": [
+					{
+						"Title": "createTable",
+						"Path": "api-createTable.md"
+					},
+					{
+						"Title": "dropTable",
+						"Path": "api-dropTable.md"
+					},
+					{
+						"Title": "seedTable",
+						"Path": "api-seedTable.md"
+					},
+					{
+						"Title": "ingestRecords",
+						"Path": "api-ingestRecords.md"
+					}
+				]
+			},
+			{
+				"Title": "BlobStoreManager",
+				"Children": [
+					{
+						"Title": "storeBlob",
+						"Path": "api-storeBlob.md"
+					},
+					{
+						"Title": "getBlob",
+						"Path": "api-getBlob.md"
+					},
+					{
+						"Title": "getBlobURL",
+						"Path": "api-getBlobURL.md"
+					},
+					{
+						"Title": "deleteBlob",
+						"Path": "api-deleteBlob.md"
+					},
+					{
+						"Title": "setStorageDelegate",
+						"Path": "api-setStorageDelegate.md"
+					}
+				]
+			}
+		],
+		"DocFiles": [
+			".nojekyll",
+			"README.md",
+			"_brand.json",
+			"_cover.md",
+			"_sidebar.md",
+			"_topbar.md",
+			"_version.json",
+			"api-addEntities.md",
+			"api-addEntity.md",
+			"api-clearAll.md",
+			"api-clearMutation.md",
+			"api-connect.md",
+			"api-createTable.md",
+			"api-deleteBlob.md",
+			"api-disconnect.md",
+			"api-dropTable.md",
+			"api-enableCacheThrough.md",
+			"api-enableNegativeIDs.md",
+			"api-getBlob.md",
+			"api-getBlobURL.md",
+			"api-getDirtyMutations.md",
+			"api-getEntity.md",
+			"api-getNextNegativeID.md",
+			"api-hasDirtyRecords.md",
+			"api-ingestRecords.md",
+			"api-initializeAsync.md",
+			"api-injectRecords.md",
+			"api-reference.md",
+			"api-remapID.md",
+			"api-removeEntity.md",
+			"api-seedEntity.md",
+			"api-seedTable.md",
+			"api-setNativeBridge.md",
+			"api-setStorageDelegate.md",
+			"api-storeBlob.md",
+			"api-trackBinaryMutation.md",
+			"api-trackMutation.md",
+			"architecture.md",
+			"concepts.md",
+			"configuration.md",
+			"entity-schema.md",
+			"index.html",
+			"native-bridge.md",
+			"quickstart.md",
+			"retold-catalog.json",
+			"retold-keyword-index.json",
+			"sync-strategies.md"
+		]
+	},
+	"Groups": []
 }
