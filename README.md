@@ -1,5 +1,7 @@
 # Meadow Provider Offline
 
+> **[&#9654; Read the Meadow-Provider-Offline Documentation](https://stevenvelozo.github.io/meadow-provider-offline/)** &mdash; interactive docs with the full API reference.
+
 > Offline-capable Meadow provider with browser-side SQLite and transparent RestClient interception
 
 Meadow Provider Offline turns any Fable/Meadow application into an offline-capable one without changing a single line of application code. It wraps the existing Fable `RestClient`, intercepts requests whose URLs match registered Meadow entity prefixes, and routes them through an in-process Orator IPC layer backed by an in-memory SQLite database (via `sql.js` WASM, or a native bridge on mobile). Requests that don't match meadow entities pass through to the real HTTP client, preserving auth, external API calls, and anything else your app already does.
