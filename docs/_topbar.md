@@ -6,4 +6,4 @@
 - [Concepts](concepts.md)
 - [Sync Strategies](sync-strategies.md)
 - [API Reference](api-reference.md)
-- [GitHub](https://github.com/stevenvelozo/meadow-provider-offline)
+- [GitHub](https://github.com/fable-retold/meadow-provider-offline)

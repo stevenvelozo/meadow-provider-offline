@@ -8,5 +8,5 @@
 - Cache-through for fall-through GETs; negative-ID assignment for offline creates
 - Native bridge to replace sql.js on mobile; IndexedDB blob storage for binary data
 
-[GitHub](https://github.com/stevenvelozo/meadow-provider-offline)
+[GitHub](https://github.com/fable-retold/meadow-provider-offline)
 [Get Started](#meadow-provider-offline)

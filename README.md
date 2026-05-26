@@ -1,6 +1,6 @@
 # Meadow Provider Offline
 
-> **[&#9654; Read the Meadow-Provider-Offline Documentation](https://stevenvelozo.github.io/meadow-provider-offline/)** &mdash; interactive docs with the full API reference.
+> **[&#9654; Read the Meadow-Provider-Offline Documentation](https://fable-retold.github.io/meadow-provider-offline/)** &mdash; interactive docs with the full API reference.
 
 > Offline-capable Meadow provider with browser-side SQLite and transparent RestClient interception
 
@@ -107,7 +107,7 @@ Each sub-service is a fable service provider in its own right. You can access an
 
 ## Documentation
 
-Full documentation lives in the [`docs`](./docs) folder and is served via [pict-docuserve](https://github.com/stevenvelozo/pict-docuserve):
+Full documentation lives in the [`docs`](./docs) folder and is served via [pict-docuserve](https://github.com/fable-retold/pict-docuserve):
 
 - [Overview](docs/README.md) -- what it solves, how it composes
 - [Quick Start](docs/quickstart.md) -- five-minute walkthrough
@@ -121,13 +121,13 @@ Full documentation lives in the [`docs`](./docs) folder and is served via [pict-
 
 ## Related Packages
 
-- [meadow](https://github.com/stevenvelozo/meadow) -- data access and ORM
-- [meadow-endpoints](https://github.com/stevenvelozo/meadow-endpoints) -- automatic REST endpoints for Meadow
-- [meadow-connection-sqlite-browser](https://github.com/stevenvelozo/meadow-connection-sqlite-browser) -- browser-side SQLite via sql.js
-- [foxhound](https://github.com/stevenvelozo/foxhound) -- query DSL for SQL generation
-- [orator](https://github.com/stevenvelozo/orator) -- API server abstraction (used for IPC)
-- [fable](https://github.com/stevenvelozo/fable) -- application services framework
-- [pict-sessionmanager](https://github.com/stevenvelozo/pict-sessionmanager) -- session management and the interception pattern this module follows
+- [meadow](https://github.com/fable-retold/meadow) -- data access and ORM
+- [meadow-endpoints](https://github.com/fable-retold/meadow-endpoints) -- automatic REST endpoints for Meadow
+- [meadow-connection-sqlite-browser](https://github.com/fable-retold/meadow-connection-sqlite-browser) -- browser-side SQLite via sql.js
+- [foxhound](https://github.com/fable-retold/foxhound) -- query DSL for SQL generation
+- [orator](https://github.com/fable-retold/orator) -- API server abstraction (used for IPC)
+- [fable](https://github.com/fable-retold/fable) -- application services framework
+- [pict-sessionmanager](https://github.com/fable-retold/pict-sessionmanager) -- session management and the interception pattern this module follows
 
 ## License
 

@@ -95,9 +95,9 @@ See [Quick Start](quickstart.md) for a complete walkthrough.
 
 ## Related Packages
 
-- [meadow](https://github.com/stevenvelozo/meadow) -- data access and ORM
-- [meadow-endpoints](https://github.com/stevenvelozo/meadow-endpoints) -- automatic REST endpoints
-- [meadow-connection-sqlite-browser](https://github.com/stevenvelozo/meadow-connection-sqlite-browser) -- browser SQLite
-- [orator](https://github.com/stevenvelozo/orator) -- API server abstraction (used for IPC)
-- [fable](https://github.com/stevenvelozo/fable) -- services framework
-- [pict-sessionmanager](https://github.com/stevenvelozo/pict-sessionmanager) -- the interception pattern this module follows
+- [meadow](https://github.com/fable-retold/meadow) -- data access and ORM
+- [meadow-endpoints](https://github.com/fable-retold/meadow-endpoints) -- automatic REST endpoints
+- [meadow-connection-sqlite-browser](https://github.com/fable-retold/meadow-connection-sqlite-browser) -- browser SQLite
+- [orator](https://github.com/fable-retold/orator) -- API server abstraction (used for IPC)
+- [fable](https://github.com/fable-retold/fable) -- services framework
+- [pict-sessionmanager](https://github.com/fable-retold/pict-sessionmanager) -- the interception pattern this module follows
