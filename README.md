@@ -1,6 +1,6 @@
 # Meadow Provider Offline
 
-> **[&#9654; Read the Meadow-Provider-Offline Documentation](https://fable-retold.github.io/meadow-provider-offline/)** &mdash; interactive docs with the full API reference.
+> **[Read the Meadow-Provider-Offline Documentation](https://fable-retold.github.io/meadow-provider-offline/)** - interactive docs with the full API reference.
 
 > Offline-capable Meadow provider with browser-side SQLite and transparent RestClient interception
 
