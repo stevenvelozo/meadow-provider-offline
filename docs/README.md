@@ -97,7 +97,7 @@ See [Quick Start](quickstart.md) for a complete walkthrough.
 
 - [meadow](https://fable-retold.github.io/meadow/) -- data access and ORM
 - [meadow-endpoints](https://fable-retold.github.io/meadow-endpoints/) -- automatic REST endpoints
-- [meadow-connection-sqlite-browser](https://github.com/fable-retold/meadow-connection-sqlite-browser) -- browser SQLite
+- [meadow-connection-sqlite-browser](https://fable-retold.github.io/meadow-connection-sqlite-browser/) -- browser SQLite
 - [orator](https://fable-retold.github.io/orator/) -- API server abstraction (used for IPC)
 - [fable](https://fable-retold.github.io/fable/) -- services framework
 - [pict-sessionmanager](https://github.com/fable-retold/pict-sessionmanager) -- the interception pattern this module follows
