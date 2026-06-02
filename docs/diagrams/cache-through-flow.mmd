@@ -1,0 +1,29 @@
+sequenceDiagram
+    participant App
+    participant RC as RestClient<br/>(wrapped)
+    participant Int as Interceptor
+    participant Orig as Original<br/>executeJSONRequest
+    participant Dirty as DirtyTracker
+    participant Cache as DataCache<br/>Manager
+    participant SQL as SQLite
+
+    App->>RC: getJSON('/1.0/Book/42', cb)
+    RC->>Int: shouldIntercept?
+    Int-->>RC: yes (Book prefix)
+    RC->>RC: try IPC first
+    Note over RC: IPC returns 404 --<br/>record not in SQLite
+    RC->>Int: cache-through enabled?
+    Int-->>RC: yes, fall through
+
+    RC->>Orig: call original executeJSONRequest
+    Orig->>Orig: HTTP GET
+    Orig-->>RC: { IDBook: 42, Title: 'Real book' }
+
+    Note over RC: Response wrapped with<br/>cache ingest callback
+    RC->>Dirty: hasEntityDirtyRecord('Book', 42)?
+    Dirty-->>RC: no
+    RC->>Cache: ingestRecords('Book', [record])
+    Cache->>SQL: INSERT OR REPLACE
+    RC-->>App: cb(null, response, record)
+
+    Note over App: Next request for<br/>'/1.0/Book/42' is served<br/>from SQLite

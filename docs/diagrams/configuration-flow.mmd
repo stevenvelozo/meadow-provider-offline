@@ -1,0 +1,9 @@
+flowchart LR
+    Constructor[Constructor options]
+    Session[SessionDataSource +<br/>DefaultSessionObject]
+    Settings[Fable settings<br/>MeadowEndpointsSessionDataSource<br/>MeadowEndpointsDefaultSessionObject]
+    ME[meadow-endpoints]
+
+    Constructor --> Session
+    Session -->|_applySessionConfig| Settings
+    Settings --> ME

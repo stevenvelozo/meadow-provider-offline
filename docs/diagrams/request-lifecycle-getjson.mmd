@@ -1,0 +1,30 @@
+sequenceDiagram
+    participant App
+    participant RC as RestClient<br/>(wrapped)
+    participant Orig as Original<br/>executeJSONRequest
+    participant Int as RestClient-<br/>Interceptor
+    participant IPC as IPC Orator<br/>Manager
+    participant ME as meadow-<br/>endpoints
+    participant Meadow as meadow DAL
+    participant SQL as SQLite<br/>(sql.js)
+
+    App->>RC: getJSON('/1.0/Books/0/10', cb)
+    RC->>RC: executeJSONRequest (wrapped)
+    RC->>Int: shouldIntercept('/1.0/Books/0/10')?
+
+    alt URL matches a registered prefix
+        Int-->>RC: entityName = 'Book'
+        RC->>IPC: invoke('GET', '/1.0/Books/0/10', null, cb)
+        IPC->>ME: Reads endpoint handler
+        ME->>Meadow: doReads(query)
+        Meadow->>SQL: SELECT * FROM Book LIMIT 10 OFFSET 0
+        SQL-->>Meadow: rows
+        Meadow-->>ME: records
+        ME-->>IPC: response body
+        IPC-->>RC: synthesized response
+        RC-->>App: cb(null, synthResponse, records)
+    else URL doesn't match
+        RC->>Orig: call original executeJSONRequest
+        Orig-->>RC: HTTP response from network
+        RC-->>App: cb(error, response, body)
+    end

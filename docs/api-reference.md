@@ -156,29 +156,8 @@ Binary storage for offline media. Accessed via `provider.blobStore`.
 
 ## Typical Usage Flow
 
-```mermaid
-flowchart LR
-    A[instantiateService]
-    B[initializeAsync]
-    C[addEntity / addEntities]
-    D[connect]
-    E[seedEntity]
-    F[use RestClient normally]
-    G[disconnect]
-    H[sync dirty records]
-
-    A --> B
-    B --> C
-    C --> D
-    D --> E
-    E --> F
-    F -.->|going back online| G
-    G --> H
-    H -.->|reconnect| D
-
-    style F fill:#fff3e0
-    style H fill:#e1f5fe
-```
+<!-- bespoke diagram: edit diagrams/typical-usage-flow.mmd or .hints.json, then: npx pict-renderer-graph build modules/meadow/meadow-provider-offline/docs -->
+![Typical Usage Flow](diagrams/typical-usage-flow.svg)
 
 The orange box is where your application code lives -- after `connect()`, every intercepted call is transparently routed through SQLite. The blue box is the sync flow, which you trigger when connectivity is restored.
 

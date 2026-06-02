@@ -1,0 +1,22 @@
+flowchart TD
+    Start([trackMutation entity id op record])
+    Exists{Existing<br/>mutation for<br/>entity:id?}
+    NewMut[Add new mutation<br/>to log]
+    CreateDelete{Existing: create<br/>New: delete?}
+    Remove[Remove from log<br/>no-op]
+    CreateUpdate{Existing: create<br/>New: update?}
+    Replace[Replace as create<br/>with latest data]
+    OtherOverwrite[Overwrite with new mutation]
+    Done([Done])
+
+    Start --> Exists
+    Exists -->|no| NewMut
+    NewMut --> Done
+    Exists -->|yes| CreateDelete
+    CreateDelete -->|yes| Remove
+    Remove --> Done
+    CreateDelete -->|no| CreateUpdate
+    CreateUpdate -->|yes| Replace
+    Replace --> Done
+    CreateUpdate -->|no| OtherOverwrite
+    OtherOverwrite --> Done

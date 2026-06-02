@@ -39,102 +39,22 @@ Meadow Provider Offline is built as five cooperating sub-services wrapped by an 
 
 ## Request Lifecycle -- `getJSON`
 
-```mermaid
-sequenceDiagram
-    participant App
-    participant RC as RestClient<br/>(wrapped)
-    participant Orig as Original<br/>executeJSONRequest
-    participant Int as RestClient-<br/>Interceptor
-    participant IPC as IPC Orator<br/>Manager
-    participant ME as meadow-<br/>endpoints
-    participant Meadow as meadow DAL
-    participant SQL as SQLite<br/>(sql.js)
-
-    App->>RC: getJSON('/1.0/Books/0/10', cb)
-    RC->>RC: executeJSONRequest (wrapped)
-    RC->>Int: shouldIntercept('/1.0/Books/0/10')?
-
-    alt URL matches a registered prefix
-        Int-->>RC: entityName = 'Book'
-        RC->>IPC: invoke('GET', '/1.0/Books/0/10', null, cb)
-        IPC->>ME: Reads endpoint handler
-        ME->>Meadow: doReads(query)
-        Meadow->>SQL: SELECT * FROM Book LIMIT 10 OFFSET 0
-        SQL-->>Meadow: rows
-        Meadow-->>ME: records
-        ME-->>IPC: response body
-        IPC-->>RC: synthesized response
-        RC-->>App: cb(null, synthResponse, records)
-    else URL doesn't match
-        RC->>Orig: call original executeJSONRequest
-        Orig-->>RC: HTTP response from network
-        RC-->>App: cb(error, response, body)
-    end
-```
+<!-- bespoke diagram: edit diagrams/request-lifecycle-getjson.mmd or .hints.json, then: npx pict-renderer-graph build modules/meadow/meadow-provider-offline/docs -->
+![Request Lifecycle -- getJSON](diagrams/request-lifecycle-getjson.svg)
 
 The interception happens inside `executeJSONRequest`, which is where all the individual `getJSON` / `putJSON` / `postJSON` / `deleteJSON` methods converge. By wrapping there, we intercept every request type with a single replacement.
 
 ## Mutation Lifecycle -- `postJSON`
 
-```mermaid
-sequenceDiagram
-    participant App
-    participant RC as RestClient<br/>(wrapped)
-    participant Int as RestClient-<br/>Interceptor
-    participant IPC as IPC Orator<br/>Manager
-    participant ME as meadow-<br/>endpoints
-    participant Meadow as meadow DAL
-    participant SQL as SQLite
-    participant Dirty as DirtyRecord-<br/>Tracker
-
-    App->>RC: postJSON('/1.0/Book', {Title:'New'}, cb)
-    RC->>RC: executeJSONRequest (wrapped)
-    RC->>Int: shouldIntercept('/1.0/Book')?
-    Int-->>RC: entityName = 'Book'
-    RC->>IPC: invoke('POST', '/1.0/Book', body, cb)
-    IPC->>ME: Create endpoint
-
-    Note over ME: Lifecycle hooks<br/>(behaviors) fire
-    ME->>Meadow: doCreate({Title:'New'})
-    Meadow->>SQL: INSERT INTO Book (...) VALUES (...)
-    SQL-->>Meadow: lastInsertRowid=42
-    Meadow-->>ME: { IDBook: 42, Title: 'New', ... }
-
-    Note over ME: post-Create behavior added<br/>by MeadowProviderOffline
-    ME->>Dirty: trackMutation('Book', 42, 'create', record)
-    ME-->>IPC: 200 OK + created record
-    IPC-->>RC: synthesized response
-    RC-->>App: cb(null, synthResponse, created)
-```
+<!-- bespoke diagram: edit diagrams/mutation-lifecycle-postjson.mmd or .hints.json, then: npx pict-renderer-graph build modules/meadow/meadow-provider-offline/docs -->
+![Mutation Lifecycle -- postJSON](diagrams/mutation-lifecycle-postjson.svg)
 
 Meadow Provider Offline patches each entity's endpoints with a **post-Create**, **post-Update**, and **post-Delete** lifecycle behavior that calls `dirtyTracker.trackMutation(...)` with the final record state. This happens inside the IPC pipeline, so the app never sees it -- it just gets its normal response back.
 
 ## Dirty Tracker Coalescing
 
-```mermaid
-flowchart TD
-    Start([trackMutation entity id op record])
-    Exists{Existing<br/>mutation for<br/>entity:id?}
-    NewMut[Add new mutation<br/>to log]
-    CreateDelete{Existing: create<br/>New: delete?}
-    Remove[Remove from log<br/>no-op]
-    CreateUpdate{Existing: create<br/>New: update?}
-    Replace[Replace as create<br/>with latest data]
-    OtherOverwrite[Overwrite with new mutation]
-    Done([Done])
-
-    Start --> Exists
-    Exists -->|no| NewMut
-    NewMut --> Done
-    Exists -->|yes| CreateDelete
-    CreateDelete -->|yes| Remove
-    Remove --> Done
-    CreateDelete -->|no| CreateUpdate
-    CreateUpdate -->|yes| Replace
-    Replace --> Done
-    CreateUpdate -->|no| OtherOverwrite
-    OtherOverwrite --> Done
-```
+<!-- bespoke diagram: edit diagrams/dirty-tracker-coalescing.mmd or .hints.json, then: npx pict-renderer-graph build modules/meadow/meadow-provider-offline/docs -->
+![Dirty Tracker Coalescing](diagrams/dirty-tracker-coalescing.svg)
 
 The two key rules:
 
@@ -145,37 +65,8 @@ All other pairs overwrite: an Update followed by an Update keeps the latest. A D
 
 ## Cache-Through Flow
 
-```mermaid
-sequenceDiagram
-    participant App
-    participant RC as RestClient<br/>(wrapped)
-    participant Int as Interceptor
-    participant Orig as Original<br/>executeJSONRequest
-    participant Dirty as DirtyTracker
-    participant Cache as DataCache<br/>Manager
-    participant SQL as SQLite
-
-    App->>RC: getJSON('/1.0/Book/42', cb)
-    RC->>Int: shouldIntercept?
-    Int-->>RC: yes (Book prefix)
-    RC->>RC: try IPC first
-    Note over RC: IPC returns 404 --<br/>record not in SQLite
-    RC->>Int: cache-through enabled?
-    Int-->>RC: yes, fall through
-
-    RC->>Orig: call original executeJSONRequest
-    Orig->>Orig: HTTP GET
-    Orig-->>RC: { IDBook: 42, Title: 'Real book' }
-
-    Note over RC: Response wrapped with<br/>cache ingest callback
-    RC->>Dirty: hasEntityDirtyRecord('Book', 42)?
-    Dirty-->>RC: no
-    RC->>Cache: ingestRecords('Book', [record])
-    Cache->>SQL: INSERT OR REPLACE
-    RC-->>App: cb(null, response, record)
-
-    Note over App: Next request for<br/>'/1.0/Book/42' is served<br/>from SQLite
-```
+<!-- bespoke diagram: edit diagrams/cache-through-flow.mmd or .hints.json, then: npx pict-renderer-graph build modules/meadow/meadow-provider-offline/docs -->
+![Cache-Through Flow](diagrams/cache-through-flow.svg)
 
 Cache-through enables "opportunistic offlining" -- the app behaves normally online, reads flow through to the network, but every successful GET is silently cached into SQLite. The next time the same record is requested the response comes from the cache instantly. Dirty records are never overwritten -- the local version is authoritative until it syncs.
 
@@ -183,51 +74,15 @@ Cache-through enables "opportunistic offlining" -- the app behaves normally onli
 
 Binary uploads and downloads follow a parallel path routed through `BlobStoreManager`:
 
-```mermaid
-sequenceDiagram
-    participant App
-    participant RC as RestClient
-    participant Int as Interceptor
-    participant Blob as BlobStore<br/>Manager
-    participant IDB as IndexedDB<br/>or Delegate
-    participant Dirty as DirtyTracker
-
-    App->>RC: postBinary('/1.0/Artifact/3/Binary', file)
-    RC->>Int: _isBinaryURL? (yes)
-    RC->>Int: _handleBinaryUpload
-    Int->>Blob: storeBlob('Artifact:3:v1', file, meta)
-    Blob->>IDB: put blob entry
-    IDB-->>Blob: ok
-    Blob-->>Int: ok
-    Int->>Dirty: trackBinaryMutation('Artifact', 3, 'Artifact:3:v1')
-    Int-->>RC: synthesized 200
-    RC-->>App: cb(null, response)
-
-    App->>RC: getBinaryBlob('/1.0/Artifact/3/Binary')
-    RC->>Int: _handleBinaryDownload
-    Int->>Blob: getBlob('Artifact:3:v1')
-    Blob->>IDB: get
-    IDB-->>Blob: { blob, metadata }
-    Blob-->>Int: blob
-    Int-->>RC: synthesized response with blob
-    RC-->>App: cb(null, response, blob)
-```
+<!-- bespoke diagram: edit diagrams/binary-blob-lifecycle.mmd or .hints.json, then: npx pict-renderer-graph build modules/meadow/meadow-provider-offline/docs -->
+![Binary / Blob Lifecycle](diagrams/binary-blob-lifecycle.svg)
 
 The same `connect()` call sets up both JSON and binary interception. Binary interception uses a parallel URL prefix check (`_isBinaryURL`) and a separate pair of wrappers on `executeBinaryUpload` and `executeChunkedRequest`.
 
 ## Configuration Flow
 
-```mermaid
-flowchart LR
-    Constructor[Constructor options]
-    Session[SessionDataSource +<br/>DefaultSessionObject]
-    Settings[Fable settings<br/>MeadowEndpointsSessionDataSource<br/>MeadowEndpointsDefaultSessionObject]
-    ME[meadow-endpoints]
-
-    Constructor --> Session
-    Session -->|_applySessionConfig| Settings
-    Settings --> ME
-```
+<!-- bespoke diagram: edit diagrams/configuration-flow.mmd or .hints.json, then: npx pict-renderer-graph build modules/meadow/meadow-provider-offline/docs -->
+![Configuration Flow](diagrams/configuration-flow.svg)
 
 On instantiation, the provider reads its options and stamps them onto `fable.settings` so that the subsequent `meadow-endpoints` creation inside `addEntity()` picks them up. This is how the browser-side endpoints know to bypass session authentication and use the default session object.
 

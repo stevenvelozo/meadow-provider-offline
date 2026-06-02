@@ -1,0 +1,21 @@
+flowchart LR
+    A[instantiateService]
+    B[initializeAsync]
+    C[addEntity / addEntities]
+    D[connect]
+    E[seedEntity]
+    F[use RestClient normally]
+    G[disconnect]
+    H[sync dirty records]
+
+    A --> B
+    B --> C
+    C --> D
+    D --> E
+    E --> F
+    F -.->|going back online| G
+    G --> H
+    H -.->|reconnect| D
+
+    style F fill:#fff3e0
+    style H fill:#e1f5fe

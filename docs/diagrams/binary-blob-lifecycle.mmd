@@ -1,0 +1,27 @@
+sequenceDiagram
+    participant App
+    participant RC as RestClient
+    participant Int as Interceptor
+    participant Blob as BlobStore<br/>Manager
+    participant IDB as IndexedDB<br/>or Delegate
+    participant Dirty as DirtyTracker
+
+    App->>RC: postBinary('/1.0/Artifact/3/Binary', file)
+    RC->>Int: _isBinaryURL? (yes)
+    RC->>Int: _handleBinaryUpload
+    Int->>Blob: storeBlob('Artifact:3:v1', file, meta)
+    Blob->>IDB: put blob entry
+    IDB-->>Blob: ok
+    Blob-->>Int: ok
+    Int->>Dirty: trackBinaryMutation('Artifact', 3, 'Artifact:3:v1')
+    Int-->>RC: synthesized 200
+    RC-->>App: cb(null, response)
+
+    App->>RC: getBinaryBlob('/1.0/Artifact/3/Binary')
+    RC->>Int: _handleBinaryDownload
+    Int->>Blob: getBlob('Artifact:3:v1')
+    Blob->>IDB: get
+    IDB-->>Blob: { blob, metadata }
+    Blob-->>Int: blob
+    Int-->>RC: synthesized response with blob
+    RC-->>App: cb(null, response, blob)

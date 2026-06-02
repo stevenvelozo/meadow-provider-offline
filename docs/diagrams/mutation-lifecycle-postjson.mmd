@@ -1,0 +1,28 @@
+sequenceDiagram
+    participant App
+    participant RC as RestClient<br/>(wrapped)
+    participant Int as RestClient-<br/>Interceptor
+    participant IPC as IPC Orator<br/>Manager
+    participant ME as meadow-<br/>endpoints
+    participant Meadow as meadow DAL
+    participant SQL as SQLite
+    participant Dirty as DirtyRecord-<br/>Tracker
+
+    App->>RC: postJSON('/1.0/Book', {Title:'New'}, cb)
+    RC->>RC: executeJSONRequest (wrapped)
+    RC->>Int: shouldIntercept('/1.0/Book')?
+    Int-->>RC: entityName = 'Book'
+    RC->>IPC: invoke('POST', '/1.0/Book', body, cb)
+    IPC->>ME: Create endpoint
+
+    Note over ME: Lifecycle hooks<br/>(behaviors) fire
+    ME->>Meadow: doCreate({Title:'New'})
+    Meadow->>SQL: INSERT INTO Book (...) VALUES (...)
+    SQL-->>Meadow: lastInsertRowid=42
+    Meadow-->>ME: { IDBook: 42, Title: 'New', ... }
+
+    Note over ME: post-Create behavior added<br/>by MeadowProviderOffline
+    ME->>Dirty: trackMutation('Book', 42, 'create', record)
+    ME-->>IPC: 200 OK + created record
+    IPC-->>RC: synthesized response
+    RC-->>App: cb(null, synthResponse, created)
