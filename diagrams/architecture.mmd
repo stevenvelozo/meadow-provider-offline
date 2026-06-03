@@ -1,0 +1,6 @@
+MeadowProviderOffline (Orchestrator)
+  ├── DataCacheManager       -- SQLite via meadow-connection-sqlite-browser
+  ├── IPCOratorManager       -- In-process Orator IPC server + meadow-endpoints
+  ├── RestClientInterceptor  -- URL matching and request routing
+  ├── DirtyRecordTracker     -- Mutation log with coalescing
+  └── BlobStoreManager       -- IndexedDB binary storage (or delegate)

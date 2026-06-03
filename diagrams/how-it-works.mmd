@@ -1,0 +1,4 @@
+Normal flow:     getJSON -> executeJSONRequest -> preRequest -> libSimpleGet -> HTTP
+Intercepted:     getJSON -> executeJSONRequest (WRAPPED) -> check URL prefix
+                   ├── Match   -> Orator IPC -> meadow-endpoints -> SQLite -> callback
+                   └── No match -> original executeJSONRequest -> HTTP as normal

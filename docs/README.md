@@ -22,12 +22,8 @@ The whole system is a classic interception wrapper following the pattern establi
 
 ## How It Works
 
-```
-Normal flow:     getJSON -> executeJSONRequest -> preRequest -> libSimpleGet -> HTTP
-Intercepted:     getJSON -> executeJSONRequest (WRAPPED) -> check URL prefix
-                   ├── Match   -> Orator IPC -> meadow-endpoints -> SQLite -> callback
-                   └── No match -> original executeJSONRequest -> HTTP as normal
-```
+<!-- bespoke diagram: edit diagrams/how-it-works.mmd or .hints.json, then: npx pict-renderer-graph build modules/meadow/meadow-provider-offline/docs -->
+![How It Works](diagrams/how-it-works.svg)
 
 When you call `addEntity(bookSchema)`, the provider:
 
@@ -43,14 +39,8 @@ After `connect(restClient)` is called, any URL matching a registered prefix is r
 
 ## Architecture
 
-```
-MeadowProviderOffline (Orchestrator)
-  ├── DataCacheManager       -- SQLite via meadow-connection-sqlite-browser
-  ├── IPCOratorManager       -- In-process Orator IPC server + meadow-endpoints
-  ├── RestClientInterceptor  -- URL matching and request routing
-  ├── DirtyRecordTracker     -- Mutation log with coalescing
-  └── BlobStoreManager       -- IndexedDB binary storage (or delegate)
-```
+<!-- bespoke diagram: edit diagrams/architecture.mmd or .hints.json, then: npx pict-renderer-graph build modules/meadow/meadow-provider-offline/docs -->
+![Architecture](diagrams/architecture.svg)
 
 Each sub-service is a fable service provider in its own right. You can access any of them via accessors on the main provider: `dirtyTracker`, `dataCacheManager`, `ipcOratorManager`, `restClientInterceptor`, `blobStore`.
 
