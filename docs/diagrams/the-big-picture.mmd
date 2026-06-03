@@ -1,0 +1,7 @@
+graph TD
+    App["Application<br/>(Pict views, models, controllers -- unchanged)"] -->|"RestClient.getJSON / putJSON / ..."| RestClient["RestClient (wrapped executeJSONRequest)"]
+    RestClient --> Interceptor["Interceptor"]
+    Interceptor -->|"Match prefix"| IPCOrator["IPC Orator<br/>+ meadow endpoints"]
+    Interceptor -->|"No match"| OriginalRC["Original RestClient -> HTTP"]
+    IPCOrator --> SQLite["SQLite<br/>(sql.js)"]
+    SQLite -->|"mutations flow back to tracker"| DirtyTracker["Dirty Tracker<br/>(in-mem)"]

@@ -93,43 +93,7 @@ When cache-through enables negative IDs (`provider.enableNegativeIDs()`), the pr
 
 ## The Big Picture
 
-```
-┌──────────────────────────────────────────────────────────┐
-│                    Application                          │
-│   (Pict views, models, controllers -- unchanged)         │
-└────────────────────────┬─────────────────────────────────┘
-                         │ RestClient.getJSON / putJSON / ...
-                         ▼
-┌──────────────────────────────────────────────────────────┐
-│             RestClient (wrapped executeJSONRequest)      │
-└────────────────────────┬─────────────────────────────────┘
-                         │
-                  ┌──────┴──────┐
-                  │  Interceptor │
-                  └──────┬──────┘
-          ┌──────────────┴──────────────┐
-          │                             │
-    Match prefix                   No match
-          │                             │
-          ▼                             ▼
-  ┌──────────────┐              ┌──────────────┐
-  │  IPC Orator  │              │   Original   │
-  │   + meadow   │              │ RestClient -> │
-  │   endpoints  │              │     HTTP      │
-  └──────┬───────┘              └──────────────┘
-         │
-         ▼
-  ┌──────────────┐
-  │   SQLite     │
-  │  (sql.js)    │
-  └──────┬───────┘
-         │
-         │ (mutations flow back to tracker)
-         ▼
-  ┌──────────────┐
-  │ Dirty Tracker │
-  │   (in-mem)    │
-  └──────────────┘
-```
+<!-- bespoke diagram: edit diagrams/the-big-picture.mmd or .hints.json, then: npx pict-renderer-graph build modules/meadow/meadow-provider-offline/docs -->
+![The Big Picture](diagrams/the-big-picture.svg)
 
 The application never knows the difference. That's the whole point.

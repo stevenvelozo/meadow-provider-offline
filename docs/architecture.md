@@ -4,28 +4,8 @@ Meadow Provider Offline is built as five cooperating sub-services wrapped by an 
 
 ## Layered Design
 
-```
-┌──────────────────────────────────────────────────────────────┐
-│                            Fable                              │
-│            (Service manager, RestClient, logging)             │
-└─────────────────────────┬────────────────────────────────────┘
-                          │
-┌─────────────────────────▼────────────────────────────────────┐
-│                    MeadowProviderOffline                      │
-│                       (Orchestrator)                          │
-└──┬──────────┬──────────────┬──────────────┬────────────┬─────┘
-   │          │              │              │            │
-┌──▼───┐  ┌───▼────┐  ┌──────▼──────┐ ┌─────▼──────┐ ┌───▼────┐
-│ Data │  │  IPC    │  │ RestClient  │ │ DirtyRecord │ │  Blob  │
-│ Cache│  │  Orator │  │ Interceptor │ │   Tracker   │ │  Store │
-│ Mgr  │  │  Mgr    │  │             │ │             │ │  Mgr   │
-└───┬──┘  └────┬────┘  └─────────────┘ └─────────────┘ └────┬───┘
-    │          │                                             │
-┌───▼──────────▼────┐                                  ┌────▼────┐
-│  sql.js (WASM)    │                                  │IndexedDB│
-│  or Native Bridge │                                  │or Delegate│
-└───────────────────┘                                  └─────────┘
-```
+<!-- bespoke diagram: edit diagrams/layered-design.mmd or .hints.json, then: npx pict-renderer-graph build modules/meadow/meadow-provider-offline/docs -->
+![Layered Design](diagrams/layered-design.svg)
 
 ### Sub-Service Responsibilities
 

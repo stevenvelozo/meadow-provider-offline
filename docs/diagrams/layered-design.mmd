@@ -1,0 +1,10 @@
+graph TD
+    Fable["Fable<br/>(Service manager, RestClient, logging)"] --> Orchestrator["MeadowProviderOffline<br/>(Orchestrator)"]
+    Orchestrator --> DataCacheMgr["Data Cache Mgr"]
+    Orchestrator --> IPCOratorMgr["IPC Orator Mgr"]
+    Orchestrator --> RestClientInterceptor["RestClient Interceptor"]
+    Orchestrator --> DirtyRecordTracker["DirtyRecord Tracker"]
+    Orchestrator --> BlobStoreMgr["Blob Store Mgr"]
+    DataCacheMgr --> SQLite["sql.js (WASM)<br/>or Native Bridge"]
+    IPCOratorMgr --> SQLite
+    BlobStoreMgr --> IndexedDB["IndexedDB<br/>or Delegate"]
